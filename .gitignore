@@ -1,0 +1,6 @@
+/.idea
+*.exe
+linux_x86_x64
+linux_arm_x64
+darwin_x86_x64
+darwin_arm_x64

@@ -1,0 +1,31 @@
+#x86 win 编译
+set GOOS=windows
+set GOARCH=amd64
+go build -ldflags="-s -w" -o win_x86_x64.exe main.go
+
+#arm win 编译
+set GOOS=windows
+set GOARCH=arm64
+go build -ldflags="-s -w" -o win_arm_x64.exe main.go
+
+#x86 linux 编译
+set GOOS=linux
+set GOARCH=amd64
+go build -ldflags="-s -w" -o linux_x86_x64 main.go
+
+#arm linux 编译
+set GOOS=linux
+set GOARCH=arm64
+go build -ldflags="-s -w" -o linux_arm_x64 main.go
+
+#x86 macOS 编译
+set GOOS=darwin
+set GOARCH=amd64
+go build -ldflags="-s -w" -o darwin_x86_x64 main.go
+
+#arm macOS 编译
+set GOOS=darwin
+set GOARCH=arm64
+go build -ldflags="-s -w" -o darwin_arm_x64 main.go
+
+
