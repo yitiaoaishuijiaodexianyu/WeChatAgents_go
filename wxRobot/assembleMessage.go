@@ -218,7 +218,7 @@ func UploadCdnFile(botWxId string, toUserName string, path string) ([]byte, int)
 	t.CgiCmd = 0
 	t.CgiRequest.ToUserName = toUserName
 	t.CgiRequest.FileType = 5
-	t.CgiRequest.FileName = "稻香"
+	t.CgiRequest.FileName = "test.mp4"
 	t.CgiRequest.FileUrl = path
 	result, _ := json.Marshal(t)
 	return result, t.ReqId

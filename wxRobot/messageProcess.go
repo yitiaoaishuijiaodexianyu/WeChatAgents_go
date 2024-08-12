@@ -2,6 +2,7 @@ package wxRobot
 
 import (
 	"WeChatAgents_go/common"
+	"WeChatAgents_go/config"
 	_struct "WeChatAgents_go/struct"
 	"encoding/json"
 	"fmt"
@@ -39,12 +40,19 @@ func getChatRoomInfo(botWxId string, chatRoomId string, c *websocket.Conn) {
 	result, reqId := GetWxIdInfo(botWxId, chatRoomId)
 	ResponseUserInfoMap[reqId] = _struct.GetUserInfo{Type: 2}
 	reqType[reqId] = 2
-	fmt.Println(string(result))
 	c.WriteMessage(1, result)
 }
 
 // MessageProcess 消息处理
 func MessageProcess(message _struct.Message, c *websocket.Conn) {
+
+	config := config.GetConfigInfo()
+	fmt.Println(config)
+
+	// 入群欢迎
+	if message.CurrentPacket.Data.AddMsg.MsgType == 10000 {
+		joinGroup(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.Content, message.CurrentPacket.Data.AddMsg.FromUserName, c)
+	}
 
 	if _, ok := ChatroomInfo[message.CurrentPacket.Data.AddMsg.FromUserName]; !ok {
 		if strings.Contains(message.CurrentPacket.Data.AddMsg.FromUserName, "@chatroom") {
@@ -53,14 +61,14 @@ func MessageProcess(message _struct.Message, c *websocket.Conn) {
 		time.Sleep(time.Second * 1)
 	}
 
-	content := "=================================\n"
+	content := "===============消息块==================\n"
 	content += "时间：" + common.GetCurrentTime() + "\n"
 	if strings.Contains(message.CurrentPacket.Data.AddMsg.FromUserName, "@chatroom") {
-		content += "群名：" + ChatroomInfo[message.CurrentPacket.Data.AddMsg.FromUserName] + "群id：" + message.CurrentPacket.Data.AddMsg.FromUserName + "\n"
+		content += "群名：[" + ChatroomInfo[message.CurrentPacket.Data.AddMsg.FromUserName] + "] 群id：[" + message.CurrentPacket.Data.AddMsg.FromUserName + "]\n"
 	}
-	content += "用户名：" + UserList[message.CurrentPacket.Data.AddMsg.ActionUserName] + " 用户id:" + message.CurrentPacket.Data.AddMsg.ActionUserName + "\n"
-	content += "消息：" + message.CurrentPacket.Data.AddMsg.Content + "\n"
-	content += "================================="
+	content += "用户名：[" + UserList[message.CurrentPacket.Data.AddMsg.ActionUserName] + "] 用户id：[" + message.CurrentPacket.Data.AddMsg.ActionUserName + "]\n"
+	content += "消息：[" + message.CurrentPacket.Data.AddMsg.Content + "]\n"
+	content += "===============消息块=================="
 	fmt.Println(content)
 
 	// 判断猜歌名
@@ -69,7 +77,7 @@ func MessageProcess(message _struct.Message, c *websocket.Conn) {
 			delete(gameAnswer, message.CurrentPacket.Data.AddMsg.FromUserName)
 			// 在访问共享资源前加锁
 			mu.Lock()
-			result := SendText(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "恭喜回答正确："+message.CurrentPacket.Data.AddMsg.Content, "")
+			result := SendText(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "@"+UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]+" 恭喜回答正确："+message.CurrentPacket.Data.AddMsg.Content, message.CurrentPacket.Data.AddMsg.ActionUserName)
 			c.WriteMessage(1, result)
 			message.CurrentPacket.Data.AddMsg.Content = "开始猜歌名"
 			delete(GameStatus, message.CurrentPacket.Data.AddMsg.FromUserName)
@@ -85,6 +93,18 @@ func MessageProcess(message _struct.Message, c *websocket.Conn) {
 		result := SendEmoji(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "2ad578fcfecda0f58e90e701b49348aa", 81258)
 		c.WriteMessage(1, result)
 	}
+
+	//if message.CurrentPacket.Data.AddMsg.Content == "发个视频" {
+	//	result, reqId := UploadCdnFile(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "https://dayu.qqsuu.cn/moyuribaoshipin/file/20240618.mp4")
+	//	ResponseImgMap[reqId] = _struct.ImgInfo{
+	//		CurrentWxid:  message.CurrentWxid,
+	//		FromUserName: message.CurrentPacket.Data.AddMsg.FromUserName,
+	//		Type:         2,
+	//	}
+	//	fmt.Println(reqId)
+	//	fmt.Println(string(result))
+	//	c.WriteMessage(1, result)
+	//}
 
 	// 发微信收藏的表情包的
 	if message.CurrentPacket.Data.AddMsg.Content == "后入鸭子" {
@@ -123,6 +143,11 @@ func MessageProcess(message _struct.Message, c *websocket.Conn) {
 	// 发小程序
 	if message.CurrentPacket.Data.AddMsg.Content == "抓大鹅" {
 		result := SendAppMessage(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "<appmsg appid=\"wxb98ac240fd74b0e3\" sdkver=\"\"><title>抓大鹅</title><des /><action>view</action><type>33</type><showtype>0</showtype><content /><url>https://mp.weixin.qq.com/mp/waerrpage?appid=wxb98ac240fd74b0e3&amp;amp;type=upgrade&amp;amp;upgradetype=3#wechat_redirect</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl /><messageaction /><laninfo /><md5>a5dfa1ea225c278d8377802e315296fa</md5><extinfo /><sourceusername /><sourcedisplayname>抓大鹅</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey>ad8d5f0d5ca82658ab6774d7a8f0b3ec</filekey><cdnthumburl>3057020100044b30490201000204946eb63d02032df08e0204aab4bc770204669f1f1c042432626663653161352d333566362d343261612d623165332d6234376365323635613234360204052808030201000405004c543e00</cdnthumburl><aeskey>8f51cc4fbcd32970914d2aa1657dbd54</aeskey><cdnthumbaeskey>8f51cc4fbcd32970914d2aa1657dbd54</cdnthumbaeskey><cdnthumbmd5>a5dfa1ea225c278d8377802e315296fa</cdnthumbmd5><encryver>1</encryver><cdnthumblength>61763</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><webviewshared><publisherId /><publisherReqId>0</publisherReqId></webviewshared><weappinfo><pagepath /><username>gh_730ace0831c4@app</username><appid>wxb98ac240fd74b0e3</appid><type>2</type><weappiconurl>http://mmbiz.qpic.cn/sz_mmbiz_png/OFye4rdPwyccR5UXGz9z5X74I2ghib0yT0pU4aFufUDy11cR8IiccLf69rba9ecRuUwAX3WtMGNNPE1nhDnBzialA/640?wx_fmt=png&amp;wxfrom=200</weappiconurl><appservicetype>4</appservicetype><shareId>2_wxb98ac240fd74b0e3_1837218910_1721704180_1</shareId></weappinfo><websearch /></appmsg>", 49)
+		c.WriteMessage(1, result)
+	}
+	// 发小程序
+	if message.CurrentPacket.Data.AddMsg.Content == "羊了个羊" {
+		result := SendAppMessage(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "<appmsg appid=\"wx141bfb9b73c970a9\" sdkver=\"\"><title>什么能阻止我睡觉？就是这头羊！！</title><des /><action>view</action><type>33</type><showtype>0</showtype><content /><url>https://mp.weixin.qq.com/mp/waerrpage?appid=wx141bfb9b73c970a9&amp;amp;type=upgrade&amp;amp;upgradetype=3#wechat_redirect</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl /><messageaction /><laninfo /><md5>43692fcd974d406c33aad13fff56079f</md5><extinfo /><sourceusername /><sourcedisplayname>羊了个羊</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey>3e77abc20b8bc03644274f1113aede03</filekey><cdnthumburl>3057020100044b30490201000204946eb63d02032df08e0204a8b4bc77020466b2de3c042438636464613930342d623235622d343037662d383166332d3639663532363638366538380204052408030201000405004c505600</cdnthumburl><aeskey>15e6af19df3980c4e983761e85e065bf</aeskey><cdnthumbaeskey>15e6af19df3980c4e983761e85e065bf</cdnthumbaeskey><cdnthumbmd5>43692fcd974d406c33aad13fff56079f</cdnthumbmd5><encryver>1</encryver><cdnthumblength>30882</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><webviewshared><publisherId /><publisherReqId>0</publisherReqId></webviewshared><weappinfo><pagepath>?1</pagepath><username>gh_6f4e5ea45e95@app</username><appid>wx141bfb9b73c970a9</appid><type>3</type><weappiconurl>http://mmbiz.qpic.cn/mmbiz_png/jLpM6Xfk87kvrEQhHQ19tPF2QqP38GRR375xiaRJcibsrHPHKndpL2Y8lfWU2aXiamsFE3zPeGWbjRzgdP1RR0slg/640?wx_fmt=png&amp;wxfrom=200</weappiconurl><appservicetype>4</appservicetype><sharekey>GCM_EYIanFwK-4WHiKnUbj90yVR2Kbib0zpU_CRtnpwakXIkAgwICoFFIfJC3B30tw-IrLZo1yKq2T1Wk7pwv0BwpSJxl3Sgwk8OgA82uRY~</sharekey><shareId>2_wx141bfb9b73c970a9_1837218910_1722998330_1</shareId></weappinfo><websearch /></appmsg><fromusername></fromusername><scene>0</scene><appinfo><version>3</version><appname>羊了个羊</appname></appinfo><commenturl />", 49)
 		c.WriteMessage(1, result)
 	}
 
@@ -179,10 +204,18 @@ func MessageProcess(message _struct.Message, c *websocket.Conn) {
 		count := len(key)
 		rand.Seed(int64(time.Now().Nanosecond()))
 		randomNum := rand.Intn(count)
-		// 打印答案
-		fmt.Println(t[key[randomNum]].Answer)
-		// 打印链接
-		fmt.Println("https://fanruizhecn.serv00.net/silk/" + t[key[randomNum]].Id + ".silk")
+
+		musicGameContent := "===============开始猜歌名消息块==================\n"
+		musicGameContent += "时间：" + common.GetCurrentTime() + "\n"
+		if strings.Contains(message.CurrentPacket.Data.AddMsg.FromUserName, "@chatroom") {
+			musicGameContent += "群名：[" + ChatroomInfo[message.CurrentPacket.Data.AddMsg.FromUserName] + "] 群id：[" + message.CurrentPacket.Data.AddMsg.FromUserName + "]\n"
+		}
+		musicGameContent += "用户名：[" + UserList[message.CurrentPacket.Data.AddMsg.ActionUserName] + "] 用户id：[" + message.CurrentPacket.Data.AddMsg.ActionUserName + "]\n"
+		musicGameContent += "答案：[" + t[key[randomNum]].Answer + "]\n"
+		musicGameContent += "地址：[" + "https://fanruizhecn.serv00.net/silk/" + t[key[randomNum]].Id + ".silk" + "]\n"
+		musicGameContent += "===============开始猜歌名消息块=================="
+		fmt.Println(musicGameContent)
+
 		gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName] = t[key[randomNum]].Answer
 		result := SendVoice(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "https://fanruizhecn.serv00.net/silk/"+t[key[randomNum]].Id+".silk", 10)
 		c.WriteMessage(1, result)
@@ -210,10 +243,15 @@ func CgiResponseProcess(info []byte, c *websocket.Conn) {
 	var response _struct.Response
 	if err := json.Unmarshal(info, &response); err != nil {
 	}
-
 	// 是图片的
 	if response.ReqId != 0 && ResponseImgMap[int(response.ReqId)].Type == 1 {
 		result := SendImg(ResponseImgMap[int(response.ReqId)].CurrentWxid, ResponseImgMap[int(response.ReqId)].FromUserName, response.ResponseData)
+		c.WriteMessage(1, result)
+	}
+
+	// 是文件的
+	if response.ReqId != 0 && ResponseImgMap[int(response.ReqId)].Type == 2 {
+		result := SendAppMessage(ResponseImgMap[int(response.ReqId)].CurrentWxid, ResponseImgMap[int(response.ReqId)].FromUserName, response.ResponseData, 49)
 		c.WriteMessage(1, result)
 	}
 
@@ -266,3 +304,41 @@ func CgiResponseProcess(info []byte, c *websocket.Conn) {
 		ChatroomInfo[t.ResponseData[0].UserName] = t.ResponseData[0].NickName
 	}
 }
+
+// 退出群聊
+func exitGroup() {
+
+}
+
+// 加入群聊
+func joinGroup(CurrentWxid string, content string, roomId string, c *websocket.Conn) {
+	if strings.Contains(content, "加入了群聊") && strings.Contains(content, "邀请你加入了群聊") == false {
+		re := regexp.MustCompile("\"(.*?)\"邀请\"(.*?)\"加入了群聊")
+		matches := re.FindAllStringSubmatch(content, -1)
+		if len(matches) < 1 {
+			return
+		}
+		if len(matches[0]) >= 3 {
+			str := "<appmsg appid=\"\" sdkver=\"0\"><title>欢迎新人[" + matches[0][2] + "]进群</title><des>邀请人 :" + matches[0][1] + "\n发送[功能]获取玩法</des><action>view</action><type>5</type><showtype>0</showtype><content /><url>https://apifox.com/apidoc/shared-edbfcebc-6263-4e87-9813-54520c1b3c19</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl>https://wx.qlogo.cn/mmopen/r48cSSlr7jgFutEJFpmolCux6WWZsm92KLTOmWITDvqPVIO5kLpTblfqsxuGzaZvGkgHsBOohkWuZlZuF48hRVEIcjRu1wVF/64</thumburl><messageaction /><laninfo /><md5></md5><extinfo /><sourceusername>gh_0c617dab0f5f</sourceusername><sourcedisplayname>关注公众号: 一条爱睡觉的咸鱼</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey></filekey><cdnthumburl></cdnthumburl><aeskey></aeskey><cdnthumbaeskey></cdnthumbaeskey><cdnthumbmd5></cdnthumbmd5><encryver>1</encryver><cdnthumblength>1830</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><weappinfo><pagepath /><username /><appid /><appservicetype>0</appservicetype></weappinfo><websearch /></appmsg><fromusername>wxid_k9i0ws42v8bt12</fromusername><scene>0</scene><appinfo><version>1</version><appname /></appinfo><commenturl />"
+			result := SendAppMessage(CurrentWxid, roomId, str, 49)
+			e := c.WriteMessage(1, result)
+			fmt.Println(e)
+		}
+	}
+
+	if strings.Contains(content, "分享的二维码加入群聊") {
+		re := regexp.MustCompile("\"(.*?)\"通过扫描\"(.*?)\"分享的二维码加入群聊")
+		matches := re.FindAllStringSubmatch(content, -1)
+		if len(matches) < 1 {
+			return
+		}
+		if len(matches[0]) >= 3 {
+			str := "<appmsg appid=\"\" sdkver=\"0\"><title>欢迎新人[" + matches[0][2] + "]进群</title><des>邀请人 :" + matches[0][1] + "\n发送[功能]获取玩法</des><action>view</action><type>5</type><showtype>0</showtype><content /><url>https://apifox.com/apidoc/shared-edbfcebc-6263-4e87-9813-54520c1b3c19</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl>https://wx.qlogo.cn/mmopen/r48cSSlr7jgFutEJFpmolCux6WWZsm92KLTOmWITDvqPVIO5kLpTblfqsxuGzaZvGkgHsBOohkWuZlZuF48hRVEIcjRu1wVF/64</thumburl><messageaction /><laninfo /><md5></md5><extinfo /><sourceusername>gh_0c617dab0f5f</sourceusername><sourcedisplayname>关注公众号: 一条爱睡觉的咸鱼</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey></filekey><cdnthumburl></cdnthumburl><aeskey></aeskey><cdnthumbaeskey></cdnthumbaeskey><cdnthumbmd5></cdnthumbmd5><encryver>1</encryver><cdnthumblength>1830</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><weappinfo><pagepath /><username /><appid /><appservicetype>0</appservicetype></weappinfo><websearch /></appmsg><fromusername>wxid_k9i0ws42v8bt12</fromusername><scene>0</scene><appinfo><version>1</version><appname /></appinfo><commenturl />"
+			result := SendAppMessage(CurrentWxid, roomId, str, 49)
+			e := c.WriteMessage(1, result)
+			fmt.Println(e)
+		}
+	}
+}
+
+//"<appmsg appid=\"\" sdkver=\"0\"><title>欢迎新人["+matches[0][1]+"]进群</title><des>邀请人 :"+matches[0][2]+"\n发送[功能]获取玩法</des><action>view</action><type>5</type><showtype>0</showtype><content /><url>https://apifox.com/apidoc/shared-edbfcebc-6263-4e87-9813-54520c1b3c19</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl>https://wx.qlogo.cn/mmopen/r48cSSlr7jgFutEJFpmolCux6WWZsm92KLTOmWITDvqPVIO5kLpTblfqsxuGzaZvGkgHsBOohkWuZlZuF48hRVEIcjRu1wVF/64</thumburl><messageaction /><laninfo /><md5></md5><extinfo /><sourceusername>gh_0c617dab0f5f</sourceusername><sourcedisplayname>关注公众号: 一条爱睡觉的咸鱼</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey></filekey><cdnthumburl></cdnthumburl><aeskey></aeskey><cdnthumbaeskey></cdnthumbaeskey><cdnthumbmd5></cdnthumbmd5><encryver>1</encryver><cdnthumblength>1830</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><weappinfo><pagepath /><username /><appid /><appservicetype>0</appservicetype></weappinfo><websearch /></appmsg><fromusername>wxid_k9i0ws42v8bt12</fromusername><scene>0</scene><appinfo><version>1</version><appname /></appinfo><commenturl />"

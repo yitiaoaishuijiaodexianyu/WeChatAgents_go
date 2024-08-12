@@ -1,6 +1,7 @@
 package wxRobot
 
 import (
+	"WeChatAgents_go/config"
 	_struct "WeChatAgents_go/struct"
 	"encoding/json"
 	"fmt"
@@ -9,16 +10,9 @@ import (
 	"time"
 )
 
-// SERCIVEHOST 域名
-var SERCIVEHOST = "aiagents-wechatagents.hf.space"
+var configInfo = config.GetConfigInfo()
 
-// SECURITYCODE 安全码
-var SECURITYCODE = "558-956-471"
-
-// BotWxid 机器人的wxId
-var BotWxid = "wxid_tj1hdj6zuh3b12"
-
-var webSocketClientUrl = "wss://" + SERCIVEHOST + "/ws/" + BotWxid + "/" + SECURITYCODE
+var webSocketClientUrl = "wss://" + configInfo.SerciveHose + "/ws/" + configInfo.BotWxid + "/" + configInfo.SecurityCode
 
 var conn *websocket.Conn
 
@@ -26,6 +20,7 @@ func websocketConn() {
 	var err error
 	conn, _, err = websocket.DefaultDialer.Dial(webSocketClientUrl, nil)
 	if err != nil {
+		fmt.Println("正在重连....")
 		time.Sleep(time.Second * 5)
 		// 进行重连
 		websocketConn()
