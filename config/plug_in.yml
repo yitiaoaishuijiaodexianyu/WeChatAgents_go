@@ -1,0 +1,31 @@
+# 功能插件
+# type 可选值为 text(文本) image(图片数据) xml(xml数据) voice(silk文件发送)
+# plug_in_name 功能的名称 为@时 表示机器人被at触发
+# method 请求你接口的方式  post 为 application/json  get不携带任何参数 请直接返回结果
+# MatchingMode 1完全匹配 2从第一个字开始匹配相等时 3 任意位置匹配成功 4为调用ai
+PlugIn:
+  - type: "appMsg"
+    plug_in_name: "点歌"
+    method: "post"
+    url: "http://127.0.0.1:6636/PlugIn/RequestSong"
+    MatchingMode: 2
+  - type: "pat"
+    plug_in_name: "拍拍"
+    method: "post"
+    url: "http://127.0.0.1:6636/PlugIn/Pat"
+    MatchingMode: 2
+  - type: "emoji"
+    plug_in_name: "后入鸭子"
+    method: "post"
+    url: "http://127.0.0.1:6636/PlugIn/TestEmoji"
+    MatchingMode: 1
+  - type: "text"
+    plug_in_name: "@"
+    method: "post"
+    url: "http://127.0.0.1:6636/PlugIn/XhAi"
+    MatchingMode: 4
+  - type: "image"
+    plug_in_name: "刺激刺激"
+    method: "post"
+    url: "http://127.0.0.1:6636/PlugIn/TestImage"
+    MatchingMode: 1

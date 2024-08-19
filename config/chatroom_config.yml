@@ -1,0 +1,11 @@
+#可用群
+chatroom:
+  - "39139856094@chatroom"
+
+#防撤回
+revokeChatroom:
+  - "39139856094@chatroom"
+
+# 启用退群通知的群
+ExitNotice:
+  - "39139856094@chatroom"

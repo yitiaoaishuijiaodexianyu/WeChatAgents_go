@@ -1,5 +1,9 @@
 
 WeChatAgents go语言客户端  
+--
+
+go语言版本使用的为1.22.0
+
 目前已经实现
 
 🟢点歌功能
@@ -8,7 +12,11 @@ WeChatAgents go语言客户端
 
 🟢发刺激刺激图片
 
-其余功能需自行实现
+🟢星火ai
+
+🟢退群监控
+
+其余功能需自行实现 非完善版本 遇见BUG 可能需要自行修复
 
 
 为Bot爱好者，搭建免费的微信Bot Agents平台 ，万物皆Agent!
@@ -45,5 +53,40 @@ Gradio App 开源，后端核心，闭源。开源有开源的好处，比如：
 |          |          |              |          |          |          | 拍一拍           | ✅        |                |          |
 
 
-
 具体使用说明：https://aiagents-wechatagents.hf.space/
+
+下面指令为win10系统操作的编译64位可执行文件
+--
+
+---
+#x86 win 编译  
+set GOOS=windows  
+set GOARCH=amd64  
+go build -ldflags="-s -w" -o win_x86_x64.exe main.go  
+---
+#arm win 编译  
+set GOOS=windows  
+set GOARCH=arm64  
+go build -ldflags="-s -w" -o win_arm_x64.exe main.go  
+---
+#x86 linux 编译  
+set GOOS=linux  
+set GOARCH=amd64  
+go build -ldflags="-s -w" -o linux_x86_x64 main.go  
+---
+#arm linux 编译  
+set GOOS=linux  
+set GOARCH=arm64  
+go build -ldflags="-s -w" -o linux_arm_x64 main.go  
+---
+#x86 macOS 编译  
+set GOOS=darwin  
+set GOARCH=amd64  
+go build -ldflags="-s -w" -o darwin_x86_x64 main.go  
+---
+#arm macOS 编译  
+set GOOS=darwin  
+set GOARCH=arm64  
+go build -ldflags="-s -w" -o darwin_arm_x64 main.go  
+---
+

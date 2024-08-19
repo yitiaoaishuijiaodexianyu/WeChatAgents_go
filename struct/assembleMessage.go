@@ -1,10 +1,17 @@
-package wxRobot
+package _struct
 
 import (
 	"encoding/json"
 	"math/rand"
 	"time"
 )
+
+var ReqIdMap = make(map[int]struct {
+	Type   string `json:"type"`
+	Status int    `json:"status"`
+	Data   string `json:"data"`
+	//Chatroom string `json:"chatroom"`
+})
 
 // 可能会出现重复 重复了就会出现意想不到的问题 自行修复
 func randReqId() int {
@@ -16,11 +23,15 @@ func randReqId() int {
 	max := int64(9999999999) // 10位数的最大值
 
 	randomNumber := rand.Int63n(max-min+1) + min
+	// 保证没有重复的 有重复的就重复运行 -- 要保证前面的处理完后及时删除这里面的
+	if _, ok := ReqIdMap[int(randomNumber)]; ok {
+		randReqId()
+	}
 	return int(randomNumber)
 }
 
 // SendText 发送文本
-func SendText(botWxId string, ToUserName string, content string, atUserList string) []byte {
+func SendText(botWxId string, ToUserName string, content string, atUserList string) ([]byte, int) {
 	type T struct {
 		ReqId      int    `json:"ReqId"`
 		BotWxid    string `json:"BotWxid"`
@@ -41,11 +52,22 @@ func SendText(botWxId string, ToUserName string, content string, atUserList stri
 	t.CgiRequest.Content = content
 	t.CgiRequest.AtUsers = atUserList
 	result, _ := json.Marshal(t)
-	return result
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "text", Status: 0, Data: string(result)})
+
+	return result, t.ReqId
 }
 
 // SendEmoji 发送emoji
-func SendEmoji(botWxId string, ToUserName string, EmojiMd5 string, EmojiLen int) []byte {
+func SendEmoji(botWxId string, ToUserName string, EmojiMd5 string, EmojiLen int) ([]byte, int) {
 	type T struct {
 		ReqId      int    `json:"ReqId"`
 		BotWxid    string `json:"BotWxid"`
@@ -64,11 +86,22 @@ func SendEmoji(botWxId string, ToUserName string, EmojiMd5 string, EmojiLen int)
 	t.CgiRequest.EmojiMd5 = EmojiMd5
 	t.CgiRequest.EmojiLen = EmojiLen
 	result, _ := json.Marshal(t)
-	return result
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "emoji", Status: 0, Data: string(result)})
+
+	return result, t.ReqId
 }
 
 // SendVoice 发送语音条
-func SendVoice(botWxId string, ToUserName string, VoiceUrl string, VoiceTime int) []byte {
+func SendVoice(botWxId string, ToUserName string, VoiceUrl string, VoiceTime int) ([]byte, int) {
 	type T struct {
 		ReqId      int    `json:"ReqId"`
 		BotWxid    string `json:"BotWxid"`
@@ -87,11 +120,22 @@ func SendVoice(botWxId string, ToUserName string, VoiceUrl string, VoiceTime int
 	t.CgiRequest.VoiceUrl = VoiceUrl
 	t.CgiRequest.VoiceTime = VoiceTime
 	result, _ := json.Marshal(t)
-	return result
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "voice", Status: 0, Data: string(result)})
+
+	return result, t.ReqId
 }
 
 // SendImg 发送图片
-func SendImg(botWxId string, ToUserName string, AppMsgXml string) []byte {
+func SendImg(botWxId string, ToUserName string, AppMsgXml string) ([]byte, int) {
 	type T struct {
 		ReqId      int    `json:"ReqId"`
 		BotWxid    string `json:"BotWxid"`
@@ -108,11 +152,22 @@ func SendImg(botWxId string, ToUserName string, AppMsgXml string) []byte {
 	t.CgiRequest.ToUserName = ToUserName
 	t.CgiRequest.AppMsgXml = AppMsgXml
 	result, _ := json.Marshal(t)
-	return result
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "image", Status: 0, Data: string(result)})
+
+	return result, t.ReqId
 }
 
 // SendAppMessage 发送App信息
-func SendAppMessage(botWxId string, ToUserName string, AppMsgXml string, MsgType int) []byte {
+func SendAppMessage(botWxId string, ToUserName string, AppMsgXml string, MsgType int) ([]byte, int) {
 	type T struct {
 		ReqId      int    `json:"ReqId"`
 		BotWxid    string `json:"BotWxid"`
@@ -131,10 +186,21 @@ func SendAppMessage(botWxId string, ToUserName string, AppMsgXml string, MsgType
 	t.CgiRequest.AppMsgXml = AppMsgXml
 	t.CgiRequest.MsgType = MsgType
 	result, _ := json.Marshal(t)
-	return result
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "app_message", Status: 0, Data: string(result)})
+
+	return result, t.ReqId
 }
 
-func SendPatMessage(botWxId string, ChatUserName string, PattedUsername string, Scene int) []byte {
+func SendPatMessage(botWxId string, ChatUserName string, PattedUsername string, Scene int) ([]byte, int) {
 	type T struct {
 		ReqId      int    `json:"ReqId"`
 		BotWxid    string `json:"BotWxid"`
@@ -154,7 +220,18 @@ func SendPatMessage(botWxId string, ChatUserName string, PattedUsername string, 
 	t.CgiRequest.PattedUsername = PattedUsername
 	t.CgiRequest.Scene = Scene
 	result, _ := json.Marshal(t)
-	return result
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "pat_message", Status: 0, Data: string(result)})
+
+	return result, t.ReqId
 }
 
 // GetWxIdInfo 根据wxid获取信息  wxId为群号时 获取群信息-包含群员列表(群员详情需传入wxId)
@@ -173,6 +250,17 @@ func GetWxIdInfo(botWxId string, wxId string) ([]byte, int) {
 	t.BotWxid = botWxId
 	t.CgiRequest.Wxid = []string{wxId}
 	result, _ := json.Marshal(t)
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "get_info", Status: 0, Data: string(result)})
+
 	return result, t.ReqId
 }
 
@@ -196,6 +284,17 @@ func UploadCdnImg(botWxId string, toUserName string, path string) ([]byte, int) 
 	t.CgiRequest.FileType = 2
 	t.CgiRequest.FileUrl = path
 	result, _ := json.Marshal(t)
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "upload_image", Status: 0, Data: string(result)})
+
 	return result, t.ReqId
 }
 
@@ -221,6 +320,17 @@ func UploadCdnFile(botWxId string, toUserName string, path string) ([]byte, int)
 	t.CgiRequest.FileName = "test.mp4"
 	t.CgiRequest.FileUrl = path
 	result, _ := json.Marshal(t)
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "upload_file", Status: 0, Data: string(result)})
+
 	return result, t.ReqId
 }
 
@@ -271,6 +381,17 @@ func DelChatroomMember(botWxId string, toUserName string, chatRoomId string) ([]
 	t.CgiRequest.Wxid = []string{toUserName}
 	t.CgiRequest.ChatroomID = chatRoomId
 	result, _ := json.Marshal(t)
+
+	ReqIdMap[t.ReqId] = struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+		Data   string `json:"data"`
+	}(struct {
+		Type   string
+		Status int
+		Data   string
+	}{Type: "del_chatroom_member", Status: 0, Data: string(result)})
+
 	return result, t.ReqId
 }
 

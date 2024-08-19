@@ -1,0 +1,26 @@
+name: "WechatAgents_go_client"
+version: "1.0.0"
+# 1 仅采用本程序提供的功能 2 同时采用本地功能与插件功能(优先调用插件功能，无实现才会调用本地功能)  3 纯调用插件功能 本程序的功能不运行
+# 本地功能也可视为插件 只是写死在代码中了而已
+RunMode: 1
+# http管理 建议不要开启0.0.0.0 本地运行就可以了
+httpServer:
+  host: "127.0.0.1"
+  port: "6636"
+robot:
+    #域名
+  - service_hose: "aiagents-wechatagents.hf.space"
+    #机器人的安全码
+    security_code: ""
+    #机器人的wxid
+    BotWxid: "wxid_tj1hdj6zuh3b12"
+    #管理员的WxId
+    admin_wx_id: "wxid_za7ku9u4uu5q21"
+xh_config:
+  appid: ""
+  apiSecret: ""
+  apiKey: ""
+  domain: "generalv2"
+  hostUrl: "wss://spark-api.xf-yun.com/v2.1/chat"
+
+
