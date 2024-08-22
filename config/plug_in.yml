@@ -8,7 +8,11 @@ PlugIn:
     plug_in_name: "点歌"
     method: "post"
     url: "http://127.0.0.1:6636/PlugIn/RequestSong"
-    MatchingMode: 2
+  - type: "del"
+    plug_in_name: "踢了他"
+    method: "post"
+    url: "http://127.0.0.1:6636/PlugIn/DelChatroomMember"
+    MatchingMode: 1
   - type: "pat"
     plug_in_name: "拍拍"
     method: "post"
@@ -35,3 +39,8 @@ PlugIn:
     method: "post"
     url: "http://127.0.0.1:6636/PlugIn/StarSign"
     MatchingMode: 4
+  - type: "game"
+    plug_in_name: "开始猜歌名"
+    method: "post"
+    url: "http://127.0.0.1:6636/PlugIn/StartGuessMusic"
+    MatchingMode: 1

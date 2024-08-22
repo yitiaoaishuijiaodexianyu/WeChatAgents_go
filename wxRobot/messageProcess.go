@@ -31,11 +31,8 @@ var ChatroomUserInfo = make(map[string][]_struct.ChatroomUser)
 // 存请求的reqId来判断 [reqId]:[类型(自定义如何处理)]
 var reqType = make(map[int]int)
 
-// GameStatus 存游戏的开始状态[群id]:[[status]:[1],[timestamp]:[时间戳]]
-var GameStatus = make(map[string]map[string]int)
-
 // 存游戏的答案 [群id]:[答案]
-var gameAnswer = make(map[string]string)
+var gameAnswer = make(map[string]_struct.GameInfo)
 
 // getChatRoomInfo 获取群的信息
 func getChatRoomInfo(botWxId string, chatRoomId string) {
@@ -100,6 +97,7 @@ func MessageProcess(message _struct.Message) {
 
 	// 这里是重组下发消息的人的微信昵称 因为可能为空
 	if _, ok := UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]; ok {
+		message.CurrentPacket.Data.AddMsg.ChatroomName = ChatroomInfo[message.CurrentPacket.Data.AddMsg.FromUserName]
 		message.CurrentPacket.Data.AddMsg.ActionNickName = UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]
 	}
 	// 处理到这里扔到http获取的切片里面去 数据基本就全了
@@ -151,7 +149,6 @@ func MessageProcess(message _struct.Message) {
 				count := len(patArr)
 				rand.Seed(int64(time.Now().Nanosecond()))
 				randomNum := rand.Intn(count)
-
 				if patArr[randomNum] == "表情包" {
 					ecount := len(emoji)
 					rand.Seed(int64(time.Now().Nanosecond()))
@@ -164,10 +161,8 @@ func MessageProcess(message _struct.Message) {
 					}
 					return
 				}
-
 				result, _ := _struct.SendText(message.CurrentWxid, message.CurrentPacket.Data.FromUserName, "@"+UserList[wxid]+" "+patArr[randomNum], wxid)
 				_struct.WebSocketConn.WriteMessage(1, result)
-
 				if patArr[randomNum] == "别拍啦，别拍啦，这就给你唱首歌听" {
 					mcount := len(silkArr)
 					rand.Seed(int64(time.Now().Nanosecond()))
@@ -224,6 +219,31 @@ func MessageProcess(message _struct.Message) {
 		fmt.Println("清空缓存成功")
 	}
 
+	// 判断是不是答对了游戏
+	if _, ok := gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName]; ok {
+		if message.CurrentPacket.Data.AddMsg.Content == gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName].Answer {
+			GameStartName := gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName].GameStartName
+			delete(gameAnswer, message.CurrentPacket.Data.AddMsg.FromUserName)
+			// 在访问共享资源前加锁
+			mu.Lock()
+			result, _ := _struct.SendText(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "@"+UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]+" 恭喜回答正确："+message.CurrentPacket.Data.AddMsg.Content, message.CurrentPacket.Data.AddMsg.ActionUserName)
+			_struct.WebSocketConn.WriteMessage(1, result)
+			time.Sleep(time.Second * 1)
+			// 自己去调用一次开始猜歌名
+			//MessageProcess(message)
+			for _, v := range _struct.PlugInConfig.PlugIn {
+				if v.PlugInName == GameStartName {
+					message.CurrentPacket.Data.AddMsg.Content = GameStartName
+					requestData, _ := json.Marshal(message)
+					response, _ := resty.New().R().SetBody(requestData).Post(v.Url)
+					resultHandle(response.Body())
+				}
+			}
+			// 释放锁
+			mu.Unlock()
+		}
+	}
+
 	// 插件运行
 	var plugIn = _struct.PlugInConfig
 	for _, v := range plugIn.PlugIn {
@@ -231,6 +251,13 @@ func MessageProcess(message _struct.Message) {
 		if v.MatchingMode == 1 {
 			if message.CurrentPacket.Data.AddMsg.Content != v.PlugInName {
 				continue
+			}
+			if v.Type == "game" {
+				if _, ok := gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName]; ok {
+					break
+				}
+				var gameInfo _struct.GameInfo
+				gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName] = gameInfo
 			}
 			requestData, _ := json.Marshal(message)
 			response, _ := resty.New().R().SetBody(requestData).Post(v.Url)
@@ -276,72 +303,6 @@ func MessageProcess(message _struct.Message) {
 				}
 			}
 		}
-	}
-
-	// 判断猜歌名
-	if _, ok := gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName]; ok {
-		if message.CurrentPacket.Data.AddMsg.Content == gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName] {
-			delete(gameAnswer, message.CurrentPacket.Data.AddMsg.FromUserName)
-			// 在访问共享资源前加锁
-			mu.Lock()
-			result, _ := _struct.SendText(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "@"+UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]+" 恭喜回答正确："+message.CurrentPacket.Data.AddMsg.Content, message.CurrentPacket.Data.AddMsg.ActionUserName)
-			_struct.WebSocketConn.WriteMessage(1, result)
-			message.CurrentPacket.Data.AddMsg.Content = "开始猜歌名"
-			delete(GameStatus, message.CurrentPacket.Data.AddMsg.FromUserName)
-			time.Sleep(time.Second * 1)
-			// 自己去调用一次开始猜歌名
-			MessageProcess(message)
-			// 释放锁
-			mu.Unlock()
-		}
-	}
-
-	// 踢人
-	if message.CurrentPacket.Data.AddMsg.Content == "踢了他" && message.CurrentPacket.Data.AddMsg.ActionUserName == "wxid_za7ku9u4uu5q21" && message.CurrentPacket.Data.AddMsg.AtId != "" {
-		result, _ := _struct.DelChatroomMember(_struct.Config.Robot[0].BotWxid, message.CurrentPacket.Data.AddMsg.AtId, message.CurrentPacket.Data.AddMsg.FromUserName)
-		_struct.WebSocketConn.WriteMessage(1, result)
-	}
-
-	// 猜歌名游戏
-	if message.CurrentPacket.Data.AddMsg.Content == "开始猜歌名" {
-		if _, ok := GameStatus[message.CurrentPacket.Data.AddMsg.FromUserName]; ok {
-			return
-		}
-		GameStatus[message.CurrentPacket.Data.AddMsg.FromUserName] = map[string]int{"status": 1, "timestamp": int(common.GetCurrentTimestamp()) + 60}
-		var t map[string]struct {
-			Id       string `json:"id"`
-			Aid      string `json:"aid"`
-			LogId    string `json:"log_id"`
-			RadioUrl string `json:"radio_url"`
-			Answer   string `json:"answer,omitempty"`
-		}
-		//resp, _ := resty.New().R().Get("https://fanruizhecn.serv00.net/radio.json")
-		resp, _ := resty.New().R().Get("https://frz.fan/resource/radio.json")
-		json.Unmarshal(resp.Body(), &t)
-		var key []string
-		for k, _ := range t {
-			key = append(key, k)
-		}
-		count := len(key)
-		rand.Seed(int64(time.Now().Nanosecond()))
-		randomNum := rand.Intn(count)
-
-		musicGameContent := "===============开始猜歌名消息块==================\n"
-		musicGameContent += "时间：" + common.GetCurrentTime() + "\n"
-		if strings.Contains(message.CurrentPacket.Data.AddMsg.FromUserName, "@chatroom") {
-			musicGameContent += "群名：[" + ChatroomInfo[message.CurrentPacket.Data.AddMsg.FromUserName] + "] 群id：[" + message.CurrentPacket.Data.AddMsg.FromUserName + "]\n"
-		}
-		musicGameContent += "用户名：[" + UserList[message.CurrentPacket.Data.AddMsg.ActionUserName] + "] 用户id：[" + message.CurrentPacket.Data.AddMsg.ActionUserName + "]\n"
-		musicGameContent += "答案：[" + t[key[randomNum]].Answer + "]\n"
-		//musicGameContent += "地址：[" + "https://fanruizhecn.serv00.net/silk/" + t[key[randomNum]].Id + ".silk" + "]\n"
-		musicGameContent += "地址：[" + "https://frz.fan/resource/silk/" + t[key[randomNum]].Id + ".silk" + "]\n"
-		musicGameContent += "===============开始猜歌名消息块=================="
-		fmt.Println(musicGameContent)
-
-		gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName] = t[key[randomNum]].Answer
-		//result, _ := _struct.SendVoice(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "https://fanruizhecn.serv00.net/silk/"+t[key[randomNum]].Id+".silk", 10)
-		result, _ := _struct.SendVoice(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "https://frz.fan/resource/silk/"+t[key[randomNum]].Id+".silk", 10)
-		_struct.WebSocketConn.WriteMessage(1, result)
 	}
 }
 
@@ -510,12 +471,14 @@ func resultHandle(result []byte) {
 		// 发送文本消息
 		if response.Data.Type == "text" {
 			var text []byte
+			var reqId int
 			if response.Data.AtIds != "" {
-				text, _ = _struct.SendText(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Message, response.Data.AtIds)
+				text, reqId = _struct.SendText(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Message, response.Data.AtIds)
 			} else {
-				text, _ = _struct.SendText(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Message, "")
+				text, reqId = _struct.SendText(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Message, "")
 			}
 			_struct.WebSocketConn.WriteMessage(1, text)
+			delete(_struct.ReqIdMap, reqId)
 		}
 
 		// 语言消息
@@ -532,29 +495,44 @@ func resultHandle(result []byte) {
 				Type:         1,
 			}
 			_struct.WebSocketConn.WriteMessage(1, image)
+			delete(_struct.ReqIdMap, reqId)
 		}
 
 		// 发送拍一拍消息
 		if response.Data.Type == "pat" {
-			pat, _ := _struct.SendPatMessage(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.PatId, 0)
+			pat, reqId := _struct.SendPatMessage(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.PatId, 0)
 			_struct.WebSocketConn.WriteMessage(1, pat)
+			delete(_struct.ReqIdMap, reqId)
 		}
 
 		// 发送emoji消息
 		if response.Data.Type == "emoji" {
-			emoji, _ := _struct.SendEmoji(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.EmojiMd5, response.Data.EmojiLength)
+			emoji, reqId := _struct.SendEmoji(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.EmojiMd5, response.Data.EmojiLength)
 			_struct.WebSocketConn.WriteMessage(1, emoji)
+			delete(_struct.ReqIdMap, reqId)
 		}
 
 		// 发送app消息
 		if response.Data.Type == "appMsg" {
-			appMsg, _ := _struct.SendAppMessage(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Xml, 49)
+			appMsg, reqId := _struct.SendAppMessage(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Xml, 49)
 			_struct.WebSocketConn.WriteMessage(1, appMsg)
+			delete(_struct.ReqIdMap, reqId)
 		}
 		// 删除群成员
 		if response.Data.Type == "delChatroomMember" {
-			delChatroomMember, _ := _struct.DelChatroomMember(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.UserWxId)
+			delChatroomMember, reqId := _struct.DelChatroomMember(_struct.Config.Robot[0].BotWxid, response.Data.UserWxId, response.Data.ReceiverId)
 			_struct.WebSocketConn.WriteMessage(1, delChatroomMember)
+			delete(_struct.ReqIdMap, reqId)
+		}
+
+		// 进入游戏
+		if response.Data.Type == "game" {
+			// 游戏开始
+			var gameInfo _struct.GameInfo
+			gameInfo.Answer = response.Data.Answer
+			gameInfo.GameStartName = response.Data.GameStartName
+			gameInfo.GameEndTime = response.Data.GameEndTime
+			gameAnswer[response.Data.ReceiverId] = gameInfo
 		}
 	}
 }

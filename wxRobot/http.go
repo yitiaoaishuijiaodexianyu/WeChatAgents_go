@@ -17,11 +17,13 @@ func HttpRun() {
 
 	// 这里是程序自带的功能
 	r.POST("/PlugIn/RequestSong", plug_in.RequestSong)
+	r.POST("/PlugIn/DelChatroomMember", plug_in.DelChatroomMember)
 	r.POST("/PlugIn/Pat", plug_in.Pat)
 	r.POST("/PlugIn/TestEmoji", plug_in.TestEmoji)
 	r.POST("/PlugIn/TestImage", plug_in.TestImage)
 	r.POST("/PlugIn/XhAi", ai.XhAi)
 	r.POST("/PlugIn/StarSign", plug_in.StarSign)
+	r.POST("/PlugIn/StartGuessMusic", plug_in.StartGuessMusic)
 
 	// 下面是主动发送
 	// 如果你不会写websocket 可以使用下面的方法

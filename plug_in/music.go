@@ -4,9 +4,12 @@ import (
 	"WeChatAgents_go/common"
 	_struct "WeChatAgents_go/struct"
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
+	"math/rand"
 	"strings"
+	"time"
 )
 
 func RequestSong(c *gin.Context) {
@@ -50,4 +53,67 @@ func RequestSong(c *gin.Context) {
 	result.BotId = message.CurrentWxid
 	c.JSON(200, common.ResultCommon(0, result, "点歌成功"))
 	return
+}
+
+func StartGuessMusic(c *gin.Context) {
+	var message _struct.Message
+	if ok := c.ShouldBindJSON(&message); ok != nil {
+		return
+	}
+	var result = _struct.PlugInResult{}
+	// 猜歌名游戏
+	if message.CurrentPacket.Data.AddMsg.Content == "开始猜歌名" {
+		var t map[string]struct {
+			Id       string `json:"id"`
+			Aid      string `json:"aid"`
+			LogId    string `json:"log_id"`
+			RadioUrl string `json:"radio_url"`
+			Answer   string `json:"answer,omitempty"`
+		}
+		//resp, _ := resty.New().R().Get("https://fanruizhecn.serv00.net/radio.json")
+		resp, _ := resty.New().R().Get("https://frz.fan/resource/radio.json")
+		json.Unmarshal(resp.Body(), &t)
+		var key []string
+		for k, _ := range t {
+			key = append(key, k)
+		}
+		count := len(key)
+		rand.Seed(int64(time.Now().Nanosecond()))
+		randomNum := rand.Intn(count)
+
+		musicGameContent := "===============开始猜歌名消息块==================\n"
+		musicGameContent += "时间：" + common.GetCurrentTime() + "\n"
+		if strings.Contains(message.CurrentPacket.Data.AddMsg.FromUserName, "@chatroom") {
+			musicGameContent += "群名：[" + message.CurrentPacket.Data.AddMsg.ChatroomName + "] 群id：[" + message.CurrentPacket.Data.AddMsg.FromUserName + "]\n"
+		}
+		musicGameContent += "用户名：[" + message.CurrentPacket.Data.AddMsg.ActionNickName + "] 用户id：[" + message.CurrentPacket.Data.AddMsg.ActionUserName + "]\n"
+		musicGameContent += "答案：[" + t[key[randomNum]].Answer + "]\n"
+		//musicGameContent += "地址：[" + "https://fanruizhecn.serv00.net/silk/" + t[key[randomNum]].Id + ".silk" + "]\n"
+		musicGameContent += "地址：[" + "https://frz.fan/resource/silk/" + t[key[randomNum]].Id + ".silk" + "]\n"
+		musicGameContent += "===============开始猜歌名消息块=================="
+		fmt.Println(musicGameContent)
+		result.Type = "game"
+		result.Answer = t[key[randomNum]].Answer
+		result.IsGame = 1
+		result.GameStartName = "开始猜歌名"
+		result.ReceiverId = message.CurrentPacket.Data.AddMsg.FromUserName
+		result.BotId = message.CurrentWxid
+		result.GameEndTime = int(common.GetCurrentTimestamp()) + 60
+		resp1, _ := resty.New().R().SetBody(map[string]interface{}{
+			"receiver_id":  message.CurrentPacket.Data.AddMsg.FromUserName,
+			"voice_url":    "https://frz.fan/resource/silk/" + t[key[randomNum]].Id + ".silk",
+			"voice_length": 10,
+			"bot_wx_id":    message.CurrentWxid,
+		}).Post("http://127.0.0.1:6636/api/SendVoice")
+		var res struct {
+			Code    int         `json:"code"`
+			Message string      `json:"message"`
+			Data    interface{} `json:"data"`
+		}
+		json.Unmarshal(resp1.Body(), &res)
+		if res.Code == 0 {
+			c.JSON(200, common.ResultCommon(0, result, "开始猜歌名成功"))
+		}
+		return
+	}
 }

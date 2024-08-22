@@ -21,6 +21,7 @@ type Message struct {
 				NewMsgIdExt    string      `json:"NewMsgIdExt"`    // 也是消息的id
 				ActionUserName string      `json:"ActionUserName"` // 发消息的人的wx_id
 				ActionNickName string      `json:"ActionNickName"` // 发消息的人的微信昵称--为空需要调用查询接口
+				ChatroomName   string      `json:"chatroom_name"`  // 群名称
 				AtId           string      `json:"at_id"`
 				RawContent     string      `json:"raw_content"`
 			} `json:"AddMsg"`
@@ -113,10 +114,11 @@ type PlugInResult struct {
 	PatId         string `json:"pat_id"`
 	Xml           string `json:"xml"`
 	BotId         string `json:"bot_id"`
+	UserWxId      string `json:"user_wx_id"`
 	IsGame        int    `json:"is_game"`
 	GameStartName string `json:"game_start_name"`
 	Answer        string `json:"answer"`
-	UserWxId      string `json:"user_wx_id"`
+	GameEndTime   int    `json:"game_end_time"`
 }
 
 type ChatroomUser struct {
@@ -132,4 +134,11 @@ type ImgInfo struct {
 
 type GetUserInfo struct {
 	Type int
+}
+
+type GameInfo struct {
+	Answer        string
+	GameStartName string
+	GameEndTime   int
+	Status        int
 }
