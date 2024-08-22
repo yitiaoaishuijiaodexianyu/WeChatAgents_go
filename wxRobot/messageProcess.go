@@ -25,9 +25,10 @@ var UserList = make(map[string]string)
 // ChatroomInfo [群id]:[群名]
 var ChatroomInfo = make(map[string]string)
 
+// ChatroomUserInfo [群id]:[struct{用户wx_id 微信名}]
 var ChatroomUserInfo = make(map[string][]_struct.ChatroomUser)
 
-// 存请求的reqId来判断 [reqid]:[类型(自定义如何处理)]
+// 存请求的reqId来判断 [reqId]:[类型(自定义如何处理)]
 var reqType = make(map[int]int)
 
 // GameStatus 存游戏的开始状态[群id]:[[status]:[1],[timestamp]:[时间戳]]
@@ -96,6 +97,13 @@ func MessageProcess(message _struct.Message) {
 			fmt.Println(err)
 		}
 	}()
+
+	// 这里是重组下发消息的人的微信昵称 因为可能为空
+	if _, ok := UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]; ok {
+		message.CurrentPacket.Data.AddMsg.ActionNickName = UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]
+	}
+	// 处理到这里扔到http获取的切片里面去 数据基本就全了
+	Enqueue(message)
 
 	// 收到事件(去检查是否有人退群)
 	if message.CurrentPacket.Data.EventName == "ON_EVENT_CONTACT_CHANGE" {
@@ -167,7 +175,6 @@ func MessageProcess(message _struct.Message) {
 					results, _ := _struct.SendVoice(message.CurrentWxid, message.CurrentPacket.Data.FromUserName, silkArr[mRandomNum], 10)
 					_struct.WebSocketConn.WriteMessage(1, results)
 				}
-				// https://fanruizhecn.serv00.net/silk/2420.silk
 			}
 		}
 		return
@@ -212,16 +219,15 @@ func MessageProcess(message _struct.Message) {
 	if int(message.CurrentPacket.Data.AddMsg.NewMsgId) != 0 {
 		fmt.Println(content)
 	}
+
 	if message.CurrentPacket.Data.AddMsg.Content == "清空运行缓存" && message.CurrentPacket.Data.AddMsg.ActionUserName == _struct.Config.Robot[0].AdminWxId {
 		fmt.Println("清空缓存成功")
 	}
 
-	if _, ok := UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]; ok {
-		message.CurrentPacket.Data.AddMsg.ActionNickName = UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]
-	}
-
+	// 插件运行
 	var plugIn = _struct.PlugInConfig
 	for _, v := range plugIn.PlugIn {
+		// 完全匹配
 		if v.MatchingMode == 1 {
 			if message.CurrentPacket.Data.AddMsg.Content != v.PlugInName {
 				continue
@@ -231,6 +237,7 @@ func MessageProcess(message _struct.Message) {
 			resultHandle(response.Body())
 			break
 		}
+		// 首N位置匹配
 		if v.MatchingMode == 2 {
 			plugInLength := len(v.PlugInName)
 			userMessage := message.CurrentPacket.Data.AddMsg.Content
@@ -240,16 +247,15 @@ func MessageProcess(message _struct.Message) {
 			if userMessage[0:plugInLength] != v.PlugInName {
 				continue
 			}
-
 			if v.PlugInName == "阿呆" {
 				message.CurrentPacket.Data.AddMsg.Content = message.CurrentPacket.Data.AddMsg.Content[6:]
 			}
-
 			requestData, _ := json.Marshal(message)
 			response, _ := resty.New().R().SetBody(requestData).Post(v.Url)
 			resultHandle(response.Body())
 			break
 		}
+		// 全模糊匹配
 		if v.MatchingMode == 3 {
 			if strings.Contains(message.CurrentPacket.Data.AddMsg.Content, v.PlugInName) {
 				requestData, _ := json.Marshal(message)
@@ -258,6 +264,7 @@ func MessageProcess(message _struct.Message) {
 				break
 			}
 		}
+		// 多指令匹配 | 分割单个指令后进行完整匹配
 		if v.MatchingMode == 4 {
 			plugInNameArr := strings.Split(v.PlugInName, "|")
 			for _, vv := range plugInNameArr {
@@ -543,6 +550,11 @@ func resultHandle(result []byte) {
 		if response.Data.Type == "appMsg" {
 			appMsg, _ := _struct.SendAppMessage(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Xml, 49)
 			_struct.WebSocketConn.WriteMessage(1, appMsg)
+		}
+		// 删除群成员
+		if response.Data.Type == "delChatroomMember" {
+			delChatroomMember, _ := _struct.DelChatroomMember(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.UserWxId)
+			_struct.WebSocketConn.WriteMessage(1, delChatroomMember)
 		}
 	}
 }

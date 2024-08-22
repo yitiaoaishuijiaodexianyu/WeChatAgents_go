@@ -66,6 +66,9 @@ func WebSocketClientStart() {
 		if err := json.Unmarshal(message, &messages); err != nil {
 			continue
 		}
+
+		messages.CurrentPacket.Data.AddMsg.RawContent = messages.CurrentPacket.Data.AddMsg.Content
+
 		messages.CurrentPacket.Data.AddMsg.Content = strings.Replace(messages.CurrentPacket.Data.AddMsg.Content, " ", "", -1)
 		// 使用正则表达式去除 @ 后的空白字符
 		re := regexp.MustCompile(`@.*?[\p{Z}\p{Zs}\p{Zl}\p{Zp}\x{2000}-\x{200a} ]`)
@@ -74,6 +77,7 @@ func WebSocketClientStart() {
 		// 看看有没有人被at
 		messages.CurrentPacket.Data.AddMsg.AtId = searchAtId(messages.CurrentPacket.Data.AddMsg.MsgSource)
 		messages.CurrentPacket.Data.AddMsg.AtId = strings.Split(messages.CurrentPacket.Data.AddMsg.AtId, ",")[0]
+
 		go MessageProcess(messages)
 	}
 }

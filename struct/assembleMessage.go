@@ -20,10 +20,10 @@ func randReqId() int {
 	rand.Seed(time.Now().UnixNano())
 
 	// 生成一个10位的随机数
-	min := int64(1000000000) // 10位数的最小值
-	max := int64(9999999999) // 10位数的最大值
+	minNumber := int64(1000000000) // 10位数的最小值
+	maxNumber := int64(9999999999) // 10位数的最大值
 
-	randomNumber := rand.Int63n(max-min+1) + min
+	randomNumber := rand.Int63n(maxNumber-minNumber+1) + minNumber
 	// 保证没有重复的 有重复的就重复运行 -- 要保证前面的处理完后及时删除这里面的
 	if _, ok := ReqIdMap[int(randomNumber)]; ok {
 		randReqId()
