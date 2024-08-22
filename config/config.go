@@ -91,16 +91,18 @@ func GetPlugInConfig() {
 }
 
 // WriteChatroomConfig 写入已知群的操作
-func WriteChatroomConfig(chatroomId string, ChatroomName string) {
+func WriteChatroomConfig(BotWxId string, chatroomId string, ChatroomName string) {
 	// 在访问共享资源前加锁
 	mu.Lock()
 	_struct.KnownGroupConfig.KnownGroup = append(_struct.KnownGroupConfig.KnownGroup, struct {
 		ChatroomId   string `yaml:"chatroom_id"`
 		ChatroomName string `yaml:"chatroom_name"`
+		BotWxId      string `yaml:"bot_wx_id"`
 	}(struct {
 		ChatroomId   string
 		ChatroomName string
-	}{ChatroomId: chatroomId, ChatroomName: ChatroomName}))
+		BotWxId      string
+	}{ChatroomId: chatroomId, ChatroomName: ChatroomName, BotWxId: BotWxId}))
 	fmt.Println(_struct.KnownGroupConfig)
 	// 将结构体编码为 YAML 数据
 	data, err := yaml.Marshal(_struct.KnownGroupConfig)

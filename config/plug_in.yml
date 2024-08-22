@@ -8,6 +8,7 @@ PlugIn:
     plug_in_name: "点歌"
     method: "post"
     url: "http://127.0.0.1:6636/PlugIn/RequestSong"
+    MatchingMode: 2
   - type: "del"
     plug_in_name: "踢了他"
     method: "post"

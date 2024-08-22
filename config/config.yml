@@ -15,7 +15,7 @@ robot:
     #机器人的wxid
     BotWxid: ""
     #管理员的WxId
-    admin_wx_id: "wxid_za7ku9u4uu5q21"
+    admin_wx_id: ""
 xh_config:
   appid: ""
   apiSecret: ""

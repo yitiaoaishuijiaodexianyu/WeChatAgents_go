@@ -11,9 +11,10 @@ import (
 )
 
 func websocketConn() {
-	var webSocketClientUrl = "wss://" + _struct.Config.Robot[0].ServiceHose + "/ws/" + _struct.Config.Robot[0].BotWxid + "/" + _struct.Config.Robot[0].SecurityCode
+	var webSocketClientUrl = "wss://" + _struct.Config.Robot[0].ServiceHose + "/ws/" + _struct.Config.Robot[0].BotWxId + "/" + _struct.Config.Robot[0].SecurityCode
 	var err error
 	_struct.WebSocketConn, _, err = websocket.DefaultDialer.Dial(webSocketClientUrl, nil)
+	//_struct.WebsocketConnMap[_struct.Config.Robot[0].BotWxId], _, err = websocket.DefaultDialer.Dial(webSocketClientUrl, nil)
 	if err != nil {
 		fmt.Println("正在重连....")
 		time.Sleep(time.Second * 5)

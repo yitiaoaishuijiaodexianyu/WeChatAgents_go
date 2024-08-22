@@ -43,7 +43,7 @@ func getChatRoomInfo(botWxId string, chatRoomId string) {
 }
 
 // checkChatroom 检查这个群是否已知 不知道这个群的话就写入到yml中 保证 程序重启时 能提前去获取一下群成员
-func checkChatroom(chatroomId string, chatroomName string) {
+func checkChatroom(BotWxId string, chatroomId string, chatroomName string) {
 	for _, v := range _struct.KnownGroupConfig.KnownGroup {
 		if v.ChatroomId == chatroomId {
 			// 这里就不处理了 存在的话
@@ -51,7 +51,7 @@ func checkChatroom(chatroomId string, chatroomName string) {
 		}
 	}
 	// 循环结束表示不存在 这里处理一下
-	config.WriteChatroomConfig(chatroomId, chatroomName)
+	config.WriteChatroomConfig(BotWxId, chatroomId, chatroomName)
 }
 
 // searchAtId 查找被at的人的id 目前发现有三种不同的情况
@@ -105,7 +105,7 @@ func MessageProcess(message _struct.Message) {
 
 	// 收到事件(去检查是否有人退群)
 	if message.CurrentPacket.Data.EventName == "ON_EVENT_CONTACT_CHANGE" {
-		result, reqId := _struct.GetWxIdInfo(_struct.Config.Robot[0].BotWxid, message.CurrentPacket.Data.Contact.UserName)
+		result, reqId := _struct.GetWxIdInfo(message.CurrentWxid, message.CurrentPacket.Data.Contact.UserName)
 		reqType[reqId] = 3
 		_struct.WebSocketConn.WriteMessage(1, result)
 		return
@@ -195,7 +195,7 @@ func MessageProcess(message _struct.Message) {
 	if len(message.CurrentPacket.Data.AddMsg.Content) > 99 {
 		strLength = 99
 	}
-	if message.CurrentPacket.Data.AddMsg.FromUserName == _struct.Config.Robot[0].BotWxid {
+	if message.CurrentPacket.Data.AddMsg.FromUserName == message.CurrentWxid {
 		content += "机器人发言：\n"
 		if strings.Contains(message.CurrentPacket.Data.AddMsg.ToUserName, "@chatroom") {
 			content += "群名：[" + ChatroomInfo[message.CurrentPacket.Data.AddMsg.ToUserName] + "] 群id：[" + message.CurrentPacket.Data.AddMsg.ToUserName + "]\n"
@@ -217,6 +217,11 @@ func MessageProcess(message _struct.Message) {
 
 	if message.CurrentPacket.Data.AddMsg.Content == "清空运行缓存" && message.CurrentPacket.Data.AddMsg.ActionUserName == _struct.Config.Robot[0].AdminWxId {
 		fmt.Println("清空缓存成功")
+	}
+
+	// 不处理自己的消息
+	if message.CurrentPacket.Data.AddMsg.ActionUserName == message.CurrentWxid {
+		return
 	}
 
 	// 判断是不是答对了游戏
@@ -245,8 +250,7 @@ func MessageProcess(message _struct.Message) {
 	}
 
 	// 插件运行
-	var plugIn = _struct.PlugInConfig
-	for _, v := range plugIn.PlugIn {
+	for _, v := range _struct.PlugInConfig.PlugIn {
 		// 完全匹配
 		if v.MatchingMode == 1 {
 			if message.CurrentPacket.Data.AddMsg.Content != v.PlugInName {
@@ -359,7 +363,7 @@ func CgiResponseProcess(info []byte) {
 		ChatroomUserInfo[t.ResponseData[0].UserName] = Userinfo
 		// 将群信息写入
 		ChatroomInfo[t.ResponseData[0].UserName] = t.ResponseData[0].NickName
-		go checkChatroom(t.ResponseData[0].UserName, t.ResponseData[0].NickName)
+		go checkChatroom(_struct.ReqIdMap[reqId].BotWxId, t.ResponseData[0].UserName, t.ResponseData[0].NickName)
 	}
 
 	// 这里是拿到reqType 为3 的 这里可以判断谁退群了
@@ -403,9 +407,9 @@ func CgiResponseProcess(info []byte) {
 					for _, vv := range ChatroomUserInfo[t.ResponseData[0].UserName] {
 						if v == vv.WxId {
 							str := "<appmsg appid=\"\" sdkver=\"0\"><title>[" + vv.Username + "]退出了群聊</title><des>" + v + "\n" + common.GetCurrentTime() + "</des><action>view</action><type>5</type><showtype>0</showtype><content /><url>https://apifox.com/apidoc/shared-edbfcebc-6263-4e87-9813-54520c1b3c19</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl>https://wx.qlogo.cn/mmopen/r48cSSlr7jgFutEJFpmolCux6WWZsm92KLTOmWITDvqPVIO5kLpTblfqsxuGzaZvGkgHsBOohkWuZlZuF48hRVEIcjRu1wVF/64</thumburl><messageaction /><laninfo /><md5></md5><extinfo /><sourceusername>gh_0c617dab0f5f</sourceusername><sourcedisplayname>关注公众号: 一条爱睡觉的咸鱼</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey></filekey><cdnthumburl></cdnthumburl><aeskey></aeskey><cdnthumbaeskey></cdnthumbaeskey><cdnthumbmd5></cdnthumbmd5><encryver>1</encryver><cdnthumblength>1830</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><weappinfo><pagepath /><username /><appid /><appservicetype>0</appservicetype></weappinfo><websearch /></appmsg><fromusername>wxid_k9i0ws42v8bt12</fromusername><scene>0</scene><appinfo><version>1</version><appname /></appinfo><commenturl />"
-							result, _ := _struct.SendAppMessage(_struct.Config.Robot[0].BotWxid, t.ResponseData[0].UserName, str, 49)
+							result, _ := _struct.SendAppMessage(_struct.ReqIdMap[reqId].BotWxId, t.ResponseData[0].UserName, str, 49)
 							_struct.WebSocketConn.WriteMessage(1, result)
-							getChatRoomInfo(_struct.Config.Robot[0].BotWxid, t.ResponseData[0].UserName)
+							getChatRoomInfo(_struct.ReqIdMap[reqId].BotWxId, t.ResponseData[0].UserName)
 						}
 					}
 				}
@@ -431,7 +435,7 @@ func joinGroup(CurrentWxid string, content string, roomId string) {
 			_struct.WebSocketConn.WriteMessage(1, result)
 			result, _ = _struct.SendVoice(CurrentWxid, roomId, "https://frz.fan/resource/rqhy.silk", 8)
 			_struct.WebSocketConn.WriteMessage(1, result)
-			getChatRoomInfo(_struct.Config.Robot[0].BotWxid, roomId)
+			getChatRoomInfo(CurrentWxid, roomId)
 		}
 	}
 
@@ -447,14 +451,14 @@ func joinGroup(CurrentWxid string, content string, roomId string) {
 			_struct.WebSocketConn.WriteMessage(1, result)
 			result, _ = _struct.SendVoice(CurrentWxid, roomId, "https://frz.fan/resource/rqhy.silk", 8)
 			_struct.WebSocketConn.WriteMessage(1, result)
-			getChatRoomInfo(_struct.Config.Robot[0].BotWxid, roomId)
+			getChatRoomInfo(CurrentWxid, roomId)
 		}
 	}
 }
 
 func GetKnownGroupInfo() {
 	for _, v := range _struct.KnownGroupConfig.KnownGroup {
-		getChatRoomInfo(_struct.Config.Robot[0].BotWxid, v.ChatroomId)
+		getChatRoomInfo(v.BotWxId, v.ChatroomId)
 	}
 }
 
@@ -473,9 +477,9 @@ func resultHandle(result []byte) {
 			var text []byte
 			var reqId int
 			if response.Data.AtIds != "" {
-				text, reqId = _struct.SendText(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Message, response.Data.AtIds)
+				text, reqId = _struct.SendText(response.Data.BotId, response.Data.ReceiverId, response.Data.Message, response.Data.AtIds)
 			} else {
-				text, reqId = _struct.SendText(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Message, "")
+				text, reqId = _struct.SendText(response.Data.BotId, response.Data.ReceiverId, response.Data.Message, "")
 			}
 			_struct.WebSocketConn.WriteMessage(1, text)
 			delete(_struct.ReqIdMap, reqId)
@@ -488,9 +492,9 @@ func resultHandle(result []byte) {
 
 		// 发送图片消息
 		if response.Data.Type == "image" {
-			image, reqId := _struct.UploadCdnImg(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Url)
+			image, reqId := _struct.UploadCdnImg(response.Data.BotId, response.Data.ReceiverId, response.Data.Url)
 			ResponseImgMap[reqId] = _struct.ImgInfo{
-				CurrentWxid:  _struct.Config.Robot[0].BotWxid,
+				CurrentWxid:  response.Data.BotId,
 				FromUserName: response.Data.ReceiverId,
 				Type:         1,
 			}
@@ -500,27 +504,27 @@ func resultHandle(result []byte) {
 
 		// 发送拍一拍消息
 		if response.Data.Type == "pat" {
-			pat, reqId := _struct.SendPatMessage(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.PatId, 0)
+			pat, reqId := _struct.SendPatMessage(response.Data.BotId, response.Data.ReceiverId, response.Data.PatId, 0)
 			_struct.WebSocketConn.WriteMessage(1, pat)
 			delete(_struct.ReqIdMap, reqId)
 		}
 
 		// 发送emoji消息
 		if response.Data.Type == "emoji" {
-			emoji, reqId := _struct.SendEmoji(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.EmojiMd5, response.Data.EmojiLength)
+			emoji, reqId := _struct.SendEmoji(response.Data.BotId, response.Data.ReceiverId, response.Data.EmojiMd5, response.Data.EmojiLength)
 			_struct.WebSocketConn.WriteMessage(1, emoji)
 			delete(_struct.ReqIdMap, reqId)
 		}
 
 		// 发送app消息
 		if response.Data.Type == "appMsg" {
-			appMsg, reqId := _struct.SendAppMessage(_struct.Config.Robot[0].BotWxid, response.Data.ReceiverId, response.Data.Xml, 49)
+			appMsg, reqId := _struct.SendAppMessage(response.Data.BotId, response.Data.ReceiverId, response.Data.Xml, 49)
 			_struct.WebSocketConn.WriteMessage(1, appMsg)
 			delete(_struct.ReqIdMap, reqId)
 		}
 		// 删除群成员
 		if response.Data.Type == "delChatroomMember" {
-			delChatroomMember, reqId := _struct.DelChatroomMember(_struct.Config.Robot[0].BotWxid, response.Data.UserWxId, response.Data.ReceiverId)
+			delChatroomMember, reqId := _struct.DelChatroomMember(response.Data.BotId, response.Data.UserWxId, response.Data.ReceiverId)
 			_struct.WebSocketConn.WriteMessage(1, delChatroomMember)
 			delete(_struct.ReqIdMap, reqId)
 		}

@@ -11,6 +11,7 @@ var ReqIdMap = make(map[int]struct {
 	Status   int    `json:"status"`
 	Data     string `json:"data"`
 	NewReqId int    `json:"new_req_id"`
+	BotWxId  string `json:"bot_wx_id"`
 	//Chatroom string `json:"chatroom"`
 })
 
@@ -59,12 +60,14 @@ func SendText(botWxId string, ToUserName string, content string, atUserList stri
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "text", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "text", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }
@@ -95,12 +98,14 @@ func SendEmoji(botWxId string, ToUserName string, EmojiMd5 string, EmojiLen int)
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "emoji", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "emoji", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }
@@ -131,12 +136,14 @@ func SendVoice(botWxId string, ToUserName string, VoiceUrl string, VoiceTime int
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "voice", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "voice", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }
@@ -165,12 +172,14 @@ func SendImg(botWxId string, ToUserName string, AppMsgXml string) ([]byte, int) 
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "image", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "image", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }
@@ -201,12 +210,14 @@ func SendAppMessage(botWxId string, ToUserName string, AppMsgXml string, MsgType
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "app_message", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "app_message", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }
@@ -237,12 +248,14 @@ func SendPatMessage(botWxId string, ChatUserName string, PattedUsername string, 
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "pat_message", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "pat_message", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }
@@ -269,12 +282,14 @@ func GetWxIdInfo(botWxId string, wxId string) ([]byte, int) {
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "get_info", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "get_info", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }
@@ -305,12 +320,14 @@ func UploadCdnImg(botWxId string, toUserName string, path string) ([]byte, int) 
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "upload_image", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "upload_image", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }
@@ -343,12 +360,14 @@ func UploadCdnFile(botWxId string, toUserName string, path string) ([]byte, int)
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "upload_file", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "upload_file", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }
@@ -406,12 +425,14 @@ func DelChatroomMember(botWxId string, toUserName string, chatRoomId string) ([]
 		Status   int    `json:"status"`
 		Data     string `json:"data"`
 		NewReqId int    `json:"new_req_id"`
+		BotWxId  string `json:"bot_wx_id"`
 	}(struct {
 		Type     string
 		Status   int
 		Data     string
 		NewReqId int
-	}{Type: "del_chatroom_member", Status: 1, Data: string(result), NewReqId: 0})
+		BotWxId  string
+	}{Type: "del_chatroom_member", Status: 1, Data: string(result), NewReqId: 0, BotWxId: botWxId})
 
 	return result, t.ReqId
 }

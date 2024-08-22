@@ -19,7 +19,7 @@ type ConfigInfo struct {
 	Robot []struct {
 		ServiceHose  string `yaml:"service_hose"`
 		SecurityCode string `yaml:"security_code"`
-		BotWxid      string `yaml:"BotWxid"`
+		BotWxId      string `yaml:"BotWxid"`
 		AdminWxId    string `yaml:"admin_wx_id"`
 	} `yaml:"robot"`
 	XhConfig struct {
@@ -53,5 +53,6 @@ type KnownGroupConfigInfo struct {
 	KnownGroup []struct {
 		ChatroomId   string `yaml:"chatroom_id"`
 		ChatroomName string `yaml:"chatroom_name"`
+		BotWxId      string `yaml:"bot_wx_id"`
 	} `yaml:"knownGroup"`
 }
