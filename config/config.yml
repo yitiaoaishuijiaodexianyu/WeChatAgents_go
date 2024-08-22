@@ -13,7 +13,7 @@ robot:
     #机器人的安全码
     security_code: ""
     #机器人的wxid
-    BotWxid: "wxid_tj1hdj6zuh3b12"
+    BotWxid: ""
     #管理员的WxId
     admin_wx_id: "wxid_za7ku9u4uu5q21"
 xh_config:

@@ -56,9 +56,37 @@ func checkChatroom(chatroomId string, chatroomName string) {
 	config.WriteChatroomConfig(chatroomId, chatroomName)
 }
 
-// 发送消息
-func writeMessage(result []byte) {
-	_struct.WebSocketConn.WriteMessage(1, result)
+// searchAtId 查找被at的人的id 目前发现有三种不同的情况
+func searchAtId(xml string) string {
+	atId := ""
+	// 定义正则表达式模式 这是一种情况
+	pattern := `<atuserlist><!\[CDATA\[,([^\]]+)\]\]></atuserlist>`
+	// 使用re.FindStringSubmatch进行匹配
+	match := regexp.MustCompile(pattern).FindStringSubmatch(xml)
+	// 检查是否匹配成功
+	if match != nil && len(match) > 1 {
+		// 被at的人的id
+		return match[1]
+	}
+	// 如果第一个模式没有匹配成功，尝试第二个模式 这是一种情况
+	pattern = `<atuserlist>(.*?)</atuserlist>`
+	match = regexp.MustCompile(pattern).FindStringSubmatch(xml)
+	if match != nil && len(match) > 1 {
+		atID := match[1]
+		if atID[0] == '<' {
+			// 如果atID以"<"开头，尝试使用第三个模式 这又是一种情况
+			pattern = `<!\[CDATA\[([^\]]+)\]\]>`
+			match = regexp.MustCompile(pattern).FindStringSubmatch(atID)
+			if match != nil && len(match) > 1 {
+				// 被at的人的id
+				return match[1]
+			}
+		} else {
+			// 被at的人的id
+			return atID
+		}
+	}
+	return atId
 }
 
 // MessageProcess 消息处理
@@ -69,22 +97,12 @@ func MessageProcess(message _struct.Message) {
 		}
 	}()
 
-	message.CurrentPacket.Data.AddMsg.Content = strings.Replace(message.CurrentPacket.Data.AddMsg.Content, " ", "", -1)
-	// 使用正则表达式去除 @ 后的空白字符
-	re := regexp.MustCompile(`@.*?[\p{Z}\p{Zs}\p{Zl}\p{Zp}\x{2000}-\x{200a} ]`)
-	message.CurrentPacket.Data.AddMsg.Content = re.ReplaceAllString(message.CurrentPacket.Data.AddMsg.Content, "")
-
-	//fmt.Println(configInfo)
-
-	// 看看有没有人被at
-	message.CurrentPacket.Data.AddMsg.AtId = searchAtId(message.CurrentPacket.Data.AddMsg.MsgSource)
-	message.CurrentPacket.Data.AddMsg.AtId = strings.Split(message.CurrentPacket.Data.AddMsg.AtId, ",")[0]
-
 	// 收到事件(去检查是否有人退群)
 	if message.CurrentPacket.Data.EventName == "ON_EVENT_CONTACT_CHANGE" {
 		result, reqId := _struct.GetWxIdInfo(_struct.Config.Robot[0].BotWxid, message.CurrentPacket.Data.Contact.UserName)
 		reqType[reqId] = 3
 		_struct.WebSocketConn.WriteMessage(1, result)
+		return
 	}
 
 	if message.CurrentPacket.Data.EventName == "ON_EVENT_PAT_MSG" {
@@ -152,13 +170,16 @@ func MessageProcess(message _struct.Message) {
 				// https://fanruizhecn.serv00.net/silk/2420.silk
 			}
 		}
+		return
 	}
 
 	// 入群欢迎
 	if message.CurrentPacket.Data.AddMsg.MsgType == 10000 {
 		joinGroup(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.Content, message.CurrentPacket.Data.AddMsg.FromUserName)
+		return
 	}
 
+	// 如果检测到不存在已知的群中 获取一次用户消息
 	if _, ok := ChatroomInfo[message.CurrentPacket.Data.AddMsg.FromUserName]; !ok {
 		if strings.Contains(message.CurrentPacket.Data.AddMsg.FromUserName, "@chatroom") {
 			getChatRoomInfo(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName)
@@ -219,6 +240,11 @@ func MessageProcess(message _struct.Message) {
 			if userMessage[0:plugInLength] != v.PlugInName {
 				continue
 			}
+
+			if v.PlugInName == "阿呆" {
+				message.CurrentPacket.Data.AddMsg.Content = message.CurrentPacket.Data.AddMsg.Content[6:]
+			}
+
 			requestData, _ := json.Marshal(message)
 			response, _ := resty.New().R().SetBody(requestData).Post(v.Url)
 			resultHandle(response.Body())
@@ -232,13 +258,15 @@ func MessageProcess(message _struct.Message) {
 				break
 			}
 		}
-		// 去触发ai
 		if v.MatchingMode == 4 {
-			if message.CurrentPacket.Data.AddMsg.AtId == _struct.Config.Robot[0].BotWxid {
-				requestData, _ := json.Marshal(message)
-				response, _ := resty.New().R().SetBody(requestData).Post(v.Url)
-				resultHandle(response.Body())
-				break
+			plugInNameArr := strings.Split(v.PlugInName, "|")
+			for _, vv := range plugInNameArr {
+				if message.CurrentPacket.Data.AddMsg.Content == vv {
+					requestData, _ := json.Marshal(message)
+					response, _ := resty.New().R().SetBody(requestData).Post(v.Url)
+					resultHandle(response.Body())
+					break
+				}
 			}
 		}
 	}
@@ -266,15 +294,7 @@ func MessageProcess(message _struct.Message) {
 		result, _ := _struct.DelChatroomMember(_struct.Config.Robot[0].BotWxid, message.CurrentPacket.Data.AddMsg.AtId, message.CurrentPacket.Data.AddMsg.FromUserName)
 		_struct.WebSocketConn.WriteMessage(1, result)
 	}
-	if message.CurrentPacket.Data.AddMsg.Content == "刺激刺激" {
-		result, reqId := _struct.UploadCdnImg(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "https://fanruizhecn.serv00.net/fl")
-		ResponseImgMap[reqId] = _struct.ImgInfo{
-			CurrentWxid:  message.CurrentWxid,
-			FromUserName: message.CurrentPacket.Data.AddMsg.FromUserName,
-			Type:         1,
-		}
-		_struct.WebSocketConn.WriteMessage(1, result)
-	}
+
 	// 猜歌名游戏
 	if message.CurrentPacket.Data.AddMsg.Content == "开始猜歌名" {
 		if _, ok := GameStatus[message.CurrentPacket.Data.AddMsg.FromUserName]; ok {
@@ -288,7 +308,8 @@ func MessageProcess(message _struct.Message) {
 			RadioUrl string `json:"radio_url"`
 			Answer   string `json:"answer,omitempty"`
 		}
-		resp, _ := resty.New().R().Get("https://fanruizhecn.serv00.net/radio.json")
+		//resp, _ := resty.New().R().Get("https://fanruizhecn.serv00.net/radio.json")
+		resp, _ := resty.New().R().Get("https://frz.fan/resource/radio.json")
 		json.Unmarshal(resp.Body(), &t)
 		var key []string
 		for k, _ := range t {
@@ -305,20 +326,15 @@ func MessageProcess(message _struct.Message) {
 		}
 		musicGameContent += "用户名：[" + UserList[message.CurrentPacket.Data.AddMsg.ActionUserName] + "] 用户id：[" + message.CurrentPacket.Data.AddMsg.ActionUserName + "]\n"
 		musicGameContent += "答案：[" + t[key[randomNum]].Answer + "]\n"
-		musicGameContent += "地址：[" + "https://fanruizhecn.serv00.net/silk/" + t[key[randomNum]].Id + ".silk" + "]\n"
+		//musicGameContent += "地址：[" + "https://fanruizhecn.serv00.net/silk/" + t[key[randomNum]].Id + ".silk" + "]\n"
+		musicGameContent += "地址：[" + "https://frz.fan/resource/silk/" + t[key[randomNum]].Id + ".silk" + "]\n"
 		musicGameContent += "===============开始猜歌名消息块=================="
 		fmt.Println(musicGameContent)
 
 		gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName] = t[key[randomNum]].Answer
-		result, _ := _struct.SendVoice(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "https://fanruizhecn.serv00.net/silk/"+t[key[randomNum]].Id+".silk", 10)
+		//result, _ := _struct.SendVoice(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "https://fanruizhecn.serv00.net/silk/"+t[key[randomNum]].Id+".silk", 10)
+		result, _ := _struct.SendVoice(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "https://frz.fan/resource/silk/"+t[key[randomNum]].Id+".silk", 10)
 		_struct.WebSocketConn.WriteMessage(1, result)
-	}
-
-	// 这里是对个人对个人发消息触发AI回复 不需要的就注释掉
-	if !strings.Contains(message.CurrentPacket.Data.AddMsg.FromUserName, "@chatroom") {
-		requestData, _ := json.Marshal(message)
-		response, _ := resty.New().R().SetBody(requestData).Post("http://127.0.0.1:6636/PlugIn/XhAi")
-		resultHandle(response.Body())
 	}
 }
 
@@ -329,27 +345,29 @@ func CgiResponseProcess(info []byte) {
 	if len(reqInfo) < 1 {
 		return
 	}
-
 	// 根据这个reqId 去找对应的处理吧 不然结构体虽然相同但是类型不同
 	reqId, _ := strconv.Atoi(reqInfo[1])
-
 	//fmt.Printf("请求的ID：%d\n", reqId)
-
-	//fmt.Println(string(info))
-
 	var response _struct.Response
-	if err := json.Unmarshal(info, &response); err != nil {
-	}
+	json.Unmarshal(info, &response)
 
 	// 是图片的
 	if response.ReqId != 0 && ResponseImgMap[int(response.ReqId)].Type == 1 {
-		result, _ := _struct.SendImg(ResponseImgMap[int(response.ReqId)].CurrentWxid, ResponseImgMap[int(response.ReqId)].FromUserName, response.ResponseData)
+		result, reqIds := _struct.SendImg(ResponseImgMap[int(response.ReqId)].CurrentWxid, ResponseImgMap[int(response.ReqId)].FromUserName, response.ResponseData)
+		reqStruct := _struct.ReqIdMap[reqId]            // 获取结构体副本
+		reqStruct.Status = response.CgiBaseResponse.Ret // 修改副本
+		reqStruct.NewReqId = reqIds                     //  要将第二个放进去 不然检测不到图片发送成功的回调
+		_struct.ReqIdMap[reqId] = reqStruct             //  重新赋值回 map
 		_struct.WebSocketConn.WriteMessage(1, result)
 	}
 
 	// 是文件的
 	if response.ReqId != 0 && ResponseImgMap[int(response.ReqId)].Type == 2 {
-		result, _ := _struct.SendAppMessage(ResponseImgMap[int(response.ReqId)].CurrentWxid, ResponseImgMap[int(response.ReqId)].FromUserName, response.ResponseData, 49)
+		result, reqIds := _struct.SendAppMessage(ResponseImgMap[int(response.ReqId)].CurrentWxid, ResponseImgMap[int(response.ReqId)].FromUserName, response.ResponseData, 49)
+		reqStruct := _struct.ReqIdMap[reqId]            // 获取结构体副本
+		reqStruct.Status = response.CgiBaseResponse.Ret // 修改副本
+		reqStruct.NewReqId = reqIds                     //  要将第二个放进去 不然检测不到图片发送成功的回调
+		_struct.ReqIdMap[reqId] = reqStruct             //  重新赋值回 map
 		_struct.WebSocketConn.WriteMessage(1, result)
 	}
 
@@ -426,6 +444,9 @@ func CgiResponseProcess(info []byte) {
 			}
 		}
 	}
+	reqStruct := _struct.ReqIdMap[reqId]            // 获取结构体副本
+	reqStruct.Status = response.CgiBaseResponse.Ret // 修改副本
+	_struct.ReqIdMap[reqId] = reqStruct             // 重新赋值回 map
 }
 
 // 加入群聊
@@ -440,7 +461,7 @@ func joinGroup(CurrentWxid string, content string, roomId string) {
 			str := "<appmsg appid=\"\" sdkver=\"0\"><title>欢迎新人[" + matches[0][2] + "]进群</title><des>邀请人 :" + matches[0][1] + "\n发送[功能]获取玩法</des><action>view</action><type>5</type><showtype>0</showtype><content /><url>https://apifox.com/apidoc/shared-edbfcebc-6263-4e87-9813-54520c1b3c19</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl>https://wx.qlogo.cn/mmopen/r48cSSlr7jgFutEJFpmolCux6WWZsm92KLTOmWITDvqPVIO5kLpTblfqsxuGzaZvGkgHsBOohkWuZlZuF48hRVEIcjRu1wVF/64</thumburl><messageaction /><laninfo /><md5></md5><extinfo /><sourceusername>gh_0c617dab0f5f</sourceusername><sourcedisplayname>关注公众号: 一条爱睡觉的咸鱼</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey></filekey><cdnthumburl></cdnthumburl><aeskey></aeskey><cdnthumbaeskey></cdnthumbaeskey><cdnthumbmd5></cdnthumbmd5><encryver>1</encryver><cdnthumblength>1830</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><weappinfo><pagepath /><username /><appid /><appservicetype>0</appservicetype></weappinfo><websearch /></appmsg><fromusername>wxid_k9i0ws42v8bt12</fromusername><scene>0</scene><appinfo><version>1</version><appname /></appinfo><commenturl />"
 			result, _ := _struct.SendAppMessage(CurrentWxid, roomId, str, 49)
 			_struct.WebSocketConn.WriteMessage(1, result)
-			result, _ = _struct.SendVoice(CurrentWxid, roomId, "https://fanruizhecn.serv00.net/silk/rqhy.silk", 8)
+			result, _ = _struct.SendVoice(CurrentWxid, roomId, "https://frz.fan/resource/rqhy.silk", 8)
 			_struct.WebSocketConn.WriteMessage(1, result)
 			getChatRoomInfo(_struct.Config.Robot[0].BotWxid, roomId)
 		}
@@ -456,7 +477,7 @@ func joinGroup(CurrentWxid string, content string, roomId string) {
 			str := "<appmsg appid=\"\" sdkver=\"0\"><title>欢迎新人[" + matches[0][1] + "]进群</title><des>邀请人 :" + matches[0][2] + "\n发送[功能]获取玩法</des><action>view</action><type>5</type><showtype>0</showtype><content /><url>https://apifox.com/apidoc/shared-edbfcebc-6263-4e87-9813-54520c1b3c19</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl>https://wx.qlogo.cn/mmopen/r48cSSlr7jgFutEJFpmolCux6WWZsm92KLTOmWITDvqPVIO5kLpTblfqsxuGzaZvGkgHsBOohkWuZlZuF48hRVEIcjRu1wVF/64</thumburl><messageaction /><laninfo /><md5></md5><extinfo /><sourceusername>gh_0c617dab0f5f</sourceusername><sourcedisplayname>关注公众号: 一条爱睡觉的咸鱼</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey></filekey><cdnthumburl></cdnthumburl><aeskey></aeskey><cdnthumbaeskey></cdnthumbaeskey><cdnthumbmd5></cdnthumbmd5><encryver>1</encryver><cdnthumblength>1830</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><weappinfo><pagepath /><username /><appid /><appservicetype>0</appservicetype></weappinfo><websearch /></appmsg><fromusername>wxid_k9i0ws42v8bt12</fromusername><scene>0</scene><appinfo><version>1</version><appname /></appinfo><commenturl />"
 			result, _ := _struct.SendAppMessage(CurrentWxid, roomId, str, 49)
 			_struct.WebSocketConn.WriteMessage(1, result)
-			result, _ = _struct.SendVoice(CurrentWxid, roomId, "https://fanruizhecn.serv00.net/silk/rqhy.silk", 8)
+			result, _ = _struct.SendVoice(CurrentWxid, roomId, "https://frz.fan/resource/rqhy.silk", 8)
 			_struct.WebSocketConn.WriteMessage(1, result)
 			getChatRoomInfo(_struct.Config.Robot[0].BotWxid, roomId)
 		}
@@ -467,39 +488,6 @@ func GetKnownGroupInfo() {
 	for _, v := range _struct.KnownGroupConfig.KnownGroup {
 		getChatRoomInfo(_struct.Config.Robot[0].BotWxid, v.ChatroomId)
 	}
-}
-
-// searchAtId 查找被at的人的id 目前发现有三种不同的情况
-func searchAtId(xml string) string {
-	atId := ""
-	// 定义正则表达式模式 这是一种情况
-	pattern := `<atuserlist><!\[CDATA\[,([^\]]+)\]\]></atuserlist>`
-	// 使用re.FindStringSubmatch进行匹配
-	match := regexp.MustCompile(pattern).FindStringSubmatch(xml)
-	// 检查是否匹配成功
-	if match != nil && len(match) > 1 {
-		// 被at的人的id
-		return match[1]
-	}
-	// 如果第一个模式没有匹配成功，尝试第二个模式 这是一种情况
-	pattern = `<atuserlist>(.*?)</atuserlist>`
-	match = regexp.MustCompile(pattern).FindStringSubmatch(xml)
-	if match != nil && len(match) > 1 {
-		atID := match[1]
-		if atID[0] == '<' {
-			// 如果atID以"<"开头，尝试使用第三个模式 这又是一种情况
-			pattern = `<!\[CDATA\[([^\]]+)\]\]>`
-			match = regexp.MustCompile(pattern).FindStringSubmatch(atID)
-			if match != nil && len(match) > 1 {
-				// 被at的人的id
-				return match[1]
-			}
-		} else {
-			// 被at的人的id
-			return atID
-		}
-	}
-	return atId
 }
 
 // 处理插件返回的结果

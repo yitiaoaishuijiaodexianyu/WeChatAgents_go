@@ -21,14 +21,18 @@ func HttpRun() {
 	r.POST("/PlugIn/TestEmoji", plug_in.TestEmoji)
 	r.POST("/PlugIn/TestImage", plug_in.TestImage)
 	r.POST("/PlugIn/XhAi", ai.XhAi)
+	r.POST("/PlugIn/StarSign", plug_in.StarSign)
 
 	// 下面是主动发送
-	//r.POST("/api/SendText")
-	//r.POST("/api/SendImage")
-	//r.POST("/api/SendAppMsg")
-	//r.POST("/api/SendPat")
-	//r.POST("/api/SendEmoji")
-	//r.POST("/api/SendVoice")
+	r.POST("/api/GetChatroomList", GetChatroomList)
+	r.POST("/api/GetChatroomUserList", GetChatroomUserList)
+	r.POST("/api/GetUserInfo", GetUserInfo)
+	r.POST("/api/SendText", SendText)
+	r.POST("/api/SendImage", SendImage)
+	r.POST("/api/SendAppMsg", SendAppMsg)
+	r.POST("/api/SendPat", SendPat)
+	r.POST("/api/SendEmoji", SendEmoji)
+	r.POST("/api/SendVoice", SendVoice)
 
 	r.Run(_struct.Config.HttpServer.Host + ":" + _struct.Config.HttpServer.Port)
 }

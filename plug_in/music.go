@@ -20,6 +20,9 @@ func RequestSong(c *gin.Context) {
 	}
 	MusicName := strings.Replace(message.CurrentPacket.Data.AddMsg.Content, "点歌", "", -1)
 	MusicName = strings.Replace(MusicName, " ", "", -1)
+	if MusicName == "" {
+		return
+	}
 	resp, _ := resty.New().R().Get("https://api.frz379.com/go_api/api/GetMusicMp3?musicName=" + MusicName)
 	type T struct {
 		Code          int         `json:"code"`

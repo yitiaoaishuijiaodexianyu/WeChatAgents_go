@@ -11,6 +11,9 @@ func TestImage(c *gin.Context) {
 	if ok := c.ShouldBindJSON(&message); ok != nil {
 		return
 	}
+	if message.CurrentPacket.Data.AddMsg.ActionUserName != "wxid_za7ku9u4uu5q21" {
+		return
+	}
 	var result = _struct.PlugInResult{}
 	result.Type = "image"
 	result.ReceiverId = message.CurrentPacket.Data.AddMsg.FromUserName

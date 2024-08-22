@@ -4,7 +4,7 @@ func ResultCommon(code int, data interface{}, message ...string) map[string]inte
 	result := map[string]interface{}{
 		"code":    code,
 		"data":    data,
-		"message": message,
+		"message": message[0],
 	}
 	return result
 }
