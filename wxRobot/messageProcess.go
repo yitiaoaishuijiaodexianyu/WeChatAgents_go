@@ -34,6 +34,8 @@ var reqType = make(map[int]int)
 // 存游戏的答案 [群id]:[答案]
 var gameAnswer = make(map[string]_struct.GameInfo)
 
+var repeater = make(map[string]map[string]int)
+
 // getChatRoomInfo 获取群的信息
 func getChatRoomInfo(botWxId string, chatRoomId string) {
 	result, reqId := _struct.GetWxIdInfo(botWxId, chatRoomId)
@@ -224,6 +226,16 @@ func MessageProcess(message _struct.Message) {
 		return
 	}
 
+	//if _, ok := repeater[message.CurrentPacket.Data.AddMsg.FromUserName][message.CurrentPacket.Data.AddMsg.Content]; ok {
+	//	repeater[message.CurrentPacket.Data.AddMsg.FromUserName][message.CurrentPacket.Data.AddMsg.Content] = repeater[message.CurrentPacket.Data.AddMsg.FromUserName][message.CurrentPacket.Data.AddMsg.Content] + 1
+	//	if repeater[message.CurrentPacket.Data.AddMsg.FromUserName][message.CurrentPacket.Data.AddMsg.Content] == 3 {
+	//		text, _ := _struct.SendText(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, message.CurrentPacket.Data.AddMsg.Content, "")
+	//		_struct.WebSocketConn.WriteMessage(1, text)
+	//	}
+	//} else {
+	//	repeater[message.CurrentPacket.Data.AddMsg.FromUserName] = map[string]int{message.CurrentPacket.Data.AddMsg.Content: 1}
+	//}
+
 	// 判断是不是答对了游戏
 	if _, ok := gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName]; ok {
 		if message.CurrentPacket.Data.AddMsg.Content == gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName].Answer {
@@ -234,8 +246,38 @@ func MessageProcess(message _struct.Message) {
 			result, _ := _struct.SendText(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "@"+UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]+" 恭喜回答正确："+message.CurrentPacket.Data.AddMsg.Content, message.CurrentPacket.Data.AddMsg.ActionUserName)
 			_struct.WebSocketConn.WriteMessage(1, result)
 			time.Sleep(time.Second * 1)
-			// 自己去调用一次开始猜歌名
-			//MessageProcess(message)
+			for _, v := range _struct.PlugInConfig.PlugIn {
+				if v.PlugInName == GameStartName {
+					message.CurrentPacket.Data.AddMsg.Content = GameStartName
+					requestData, _ := json.Marshal(message)
+					response, _ := resty.New().R().SetBody(requestData).Post(v.Url)
+					resultHandle(response.Body())
+				}
+			}
+			// 释放锁
+			mu.Unlock()
+		}
+		// 这里是多答案的处理
+		if strings.Contains(gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName].Answer, message.CurrentPacket.Data.AddMsg.Content) {
+			tips := -1
+			for k, v := range strings.Split(gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName].Answer, "|") {
+				if v == message.CurrentPacket.Data.AddMsg.Content {
+					tips = k
+				}
+			}
+			CorrectTipsStr := strings.Split(gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName].CorrectTips, "|")[tips]
+			GameStartName := gameAnswer[message.CurrentPacket.Data.AddMsg.FromUserName].GameStartName
+			delete(gameAnswer, message.CurrentPacket.Data.AddMsg.FromUserName)
+			// 在访问共享资源前加锁
+			mu.Lock()
+			var result []byte
+			if tips == -1 {
+				result, _ = _struct.SendText(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "@"+UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]+" 恭喜回答正确："+message.CurrentPacket.Data.AddMsg.Content, message.CurrentPacket.Data.AddMsg.ActionUserName)
+			} else {
+				result, _ = _struct.SendText(message.CurrentWxid, message.CurrentPacket.Data.AddMsg.FromUserName, "@"+UserList[message.CurrentPacket.Data.AddMsg.ActionUserName]+" 恭喜回答正确：\n"+CorrectTipsStr, message.CurrentPacket.Data.AddMsg.ActionUserName)
+			}
+			_struct.WebSocketConn.WriteMessage(1, result)
+			time.Sleep(time.Second * 1)
 			for _, v := range _struct.PlugInConfig.PlugIn {
 				if v.PlugInName == GameStartName {
 					message.CurrentPacket.Data.AddMsg.Content = GameStartName
@@ -536,6 +578,7 @@ func resultHandle(result []byte) {
 			gameInfo.Answer = response.Data.Answer
 			gameInfo.GameStartName = response.Data.GameStartName
 			gameInfo.GameEndTime = response.Data.GameEndTime
+			gameInfo.CorrectTips = response.Data.CorrectTips
 			gameAnswer[response.Data.ReceiverId] = gameInfo
 		}
 	}

@@ -45,3 +45,8 @@ PlugIn:
     method: "post"
     url: "http://127.0.0.1:6636/PlugIn/StartGuessMusic"
     MatchingMode: 1
+  - type: "game"
+    plug_in_name: "开始成语接龙"
+    method: "post"
+    url: "http://127.0.0.1:6636/PlugIn/StartIdiomSolitaire"
+    MatchingMode: 1

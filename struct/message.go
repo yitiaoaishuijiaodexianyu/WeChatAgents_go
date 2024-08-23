@@ -118,6 +118,7 @@ type PlugInResult struct {
 	IsGame        int    `json:"is_game"`
 	GameStartName string `json:"game_start_name"`
 	Answer        string `json:"answer"`
+	CorrectTips   string `json:"correct_tips"`
 	GameEndTime   int    `json:"game_end_time"`
 }
 
@@ -137,8 +138,9 @@ type GetUserInfo struct {
 }
 
 type GameInfo struct {
-	Answer        string
-	GameStartName string
-	GameEndTime   int
-	Status        int
+	Answer        string `json:"answer"`
+	GameStartName string `json:"game_start_name"`
+	GameEndTime   int    `json:"game_end_time"`
+	Status        int    `json:"status"`
+	CorrectTips   string `json:"correct_tips"`
 }

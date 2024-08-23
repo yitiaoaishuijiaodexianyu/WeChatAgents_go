@@ -24,6 +24,7 @@ func HttpRun() {
 	r.POST("/PlugIn/XhAi", ai.XhAi)
 	r.POST("/PlugIn/StarSign", plug_in.StarSign)
 	r.POST("/PlugIn/StartGuessMusic", plug_in.StartGuessMusic)
+	r.POST("/PlugIn/StartIdiomSolitaire", plug_in.StartIdiomSolitaire)
 
 	// 下面是主动发送
 	// 如果你不会写websocket 可以使用下面的方法

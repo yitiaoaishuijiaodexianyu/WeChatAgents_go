@@ -56,3 +56,24 @@ type KnownGroupConfigInfo struct {
 		BotWxId      string `yaml:"bot_wx_id"`
 	} `yaml:"knownGroup"`
 }
+
+// IdiomMap 这里是成语+成语的解析
+var IdiomMap map[string]Idiom
+
+// IdiomStrings 这里是所有的成语
+var IdiomStrings []string
+
+// IdiomFirstMap 这里存的以开头拼音的成语 给接龙使用
+var IdiomFirstMap map[string][]Idiom
+
+type Idiom struct {
+	Derivation   string `json:"derivation"`
+	Example      string `json:"example"`
+	Explanation  string `json:"explanation"`
+	Pinyin       string `json:"pinyin"`
+	Word         string `json:"word"`
+	Abbreviation string `json:"abbreviation"`
+	PinyinR      string `json:"pinyin_r"`
+	First        string `json:"first"`
+	Last         string `json:"last"`
+}
