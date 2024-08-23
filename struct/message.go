@@ -68,6 +68,34 @@ type Response struct {
 	ResponseData string `json:"ResponseData"`
 }
 
+type WxUserInfo struct {
+	MsgType         int    `json:"MsgType"`
+	UserName        string `json:"UserName"`
+	NickName        string `json:"NickName"`
+	Signature       string `json:"Signature"`
+	SmallHeadImgUrl string `json:"SmallHeadImgUrl"`
+	BigHeadImgUrl   string `json:"BigHeadImgUrl"`
+	Province        string `json:"Province"`
+	City            string `json:"City"`
+	Remark          string `json:"Remark"`
+	Alias           string `json:"Alias"`
+	Sex             int    `json:"Sex"`
+	ContactType     int    `json:"ContactType"`
+	VerifyFlag      int    `json:"VerifyFlag"`
+	LabelLists      string `json:"LabelLists"`
+	ChatRoomOwner   string `json:"ChatRoomOwner"`
+	EncryptUsername string `json:"EncryptUsername"`
+	ExtInfo         string `json:"ExtInfo"`
+	ExtInfoExt      string `json:"ExtInfoExt"`
+	ChatRoomMember  []struct {
+		Wxid               string `json:"Wxid"`
+		NickName           string `json:"NickName"`
+		ChatroomMemberFlag int    `json:"ChatroomMemberFlag"`
+	} `json:"ChatRoomMember"`
+	Ticket          string `json:"Ticket"`
+	ChatroomVersion int    `json:"ChatroomVersion"`
+}
+
 type SearchChatroomInfo struct {
 	CgiBaseResponse struct {
 		ErrMsg string `json:"ErrMsg"`

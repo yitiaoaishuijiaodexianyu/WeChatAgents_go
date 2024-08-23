@@ -448,7 +448,46 @@ func CgiResponseProcess(info []byte) {
 				for _, v := range leftUsers {
 					for _, vv := range ChatroomUserInfo[t.ResponseData[0].UserName] {
 						if v == vv.WxId {
-							str := "<appmsg appid=\"\" sdkver=\"0\"><title>[" + vv.Username + "]退出了群聊</title><des>" + v + "\n" + common.GetCurrentTime() + "</des><action>view</action><type>5</type><showtype>0</showtype><content /><url>https://apifox.com/apidoc/shared-edbfcebc-6263-4e87-9813-54520c1b3c19</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl>https://wx.qlogo.cn/mmopen/r48cSSlr7jgFutEJFpmolCux6WWZsm92KLTOmWITDvqPVIO5kLpTblfqsxuGzaZvGkgHsBOohkWuZlZuF48hRVEIcjRu1wVF/64</thumburl><messageaction /><laninfo /><md5></md5><extinfo /><sourceusername>gh_0c617dab0f5f</sourceusername><sourcedisplayname>关注公众号: 一条爱睡觉的咸鱼</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey></filekey><cdnthumburl></cdnthumburl><aeskey></aeskey><cdnthumbaeskey></cdnthumbaeskey><cdnthumbmd5></cdnthumbmd5><encryver>1</encryver><cdnthumblength>1830</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><weappinfo><pagepath /><username /><appid /><appservicetype>0</appservicetype></weappinfo><websearch /></appmsg><fromusername>wxid_k9i0ws42v8bt12</fromusername><scene>0</scene><appinfo><version>1</version><appname /></appinfo><commenturl />"
+							getUserInfoResponse, _ := resty.New().R().SetBody(map[string]interface{}{
+								"wx_id":     vv.WxId,
+								"bot_wx_id": _struct.ReqIdMap[reqId].BotWxId,
+							}).Post("http://127.0.0.1:6636/api/GetUserInfo")
+							var getUserInfoResponseStruct struct {
+								Code int `json:"code"`
+								Data struct {
+									MsgType         int         `json:"MsgType"`
+									UserName        string      `json:"UserName"`
+									NickName        string      `json:"NickName"`
+									Signature       string      `json:"Signature"`
+									SmallHeadImgUrl string      `json:"SmallHeadImgUrl"`
+									BigHeadImgUrl   string      `json:"BigHeadImgUrl"`
+									Province        string      `json:"Province"`
+									City            string      `json:"City"`
+									Remark          string      `json:"Remark"`
+									Alias           string      `json:"Alias"`
+									Sex             int         `json:"Sex"`
+									ContactType     int         `json:"ContactType"`
+									VerifyFlag      int         `json:"VerifyFlag"`
+									LabelLists      string      `json:"LabelLists"`
+									ChatRoomOwner   string      `json:"ChatRoomOwner"`
+									EncryptUsername string      `json:"EncryptUsername"`
+									ExtInfo         string      `json:"ExtInfo"`
+									ExtInfoExt      string      `json:"ExtInfoExt"`
+									ChatRoomMember  interface{} `json:"ChatRoomMember"`
+									Ticket          string      `json:"Ticket"`
+									ChatroomVersion int         `json:"ChatroomVersion"`
+								} `json:"data"`
+								Message string `json:"message"`
+							}
+							json.Unmarshal(getUserInfoResponse.Body(), &getUserInfoResponseStruct)
+							headImage := "https://wx.qlogo.cn/mmopen/r48cSSlr7jgFutEJFpmolCux6WWZsm92KLTOmWITDvqPVIO5kLpTblfqsxuGzaZvGkgHsBOohkWuZlZuF48hRVEIcjRu1wVF/64"
+							if getUserInfoResponseStruct.Data.SmallHeadImgUrl != "" {
+								headImage = getUserInfoResponseStruct.Data.SmallHeadImgUrl
+							}
+							if getUserInfoResponseStruct.Data.BigHeadImgUrl != "" {
+								headImage = getUserInfoResponseStruct.Data.BigHeadImgUrl
+							}
+							str := "<appmsg appid=\"\" sdkver=\"0\"><title>[" + vv.Username + "]退出了群聊</title><des>" + v + "\n" + common.GetCurrentTime() + "</des><action>view</action><type>5</type><showtype>0</showtype><content /><url>https://apifox.com/apidoc/shared-edbfcebc-6263-4e87-9813-54520c1b3c19</url><dataurl /><lowurl /><lowdataurl /><recorditem /><thumburl>" + headImage + "</thumburl><messageaction /><laninfo /><md5></md5><extinfo /><sourceusername>gh_0c617dab0f5f</sourceusername><sourcedisplayname>关注公众号: 一条爱睡觉的咸鱼</sourcedisplayname><commenturl /><appattach><totallen>0</totallen><attachid /><emoticonmd5></emoticonmd5><fileext>jpg</fileext><filekey></filekey><cdnthumburl></cdnthumburl><aeskey></aeskey><cdnthumbaeskey></cdnthumbaeskey><cdnthumbmd5></cdnthumbmd5><encryver>1</encryver><cdnthumblength>1830</cdnthumblength><cdnthumbheight>100</cdnthumbheight><cdnthumbwidth>100</cdnthumbwidth></appattach><weappinfo><pagepath /><username /><appid /><appservicetype>0</appservicetype></weappinfo><websearch /></appmsg><fromusername>wxid_k9i0ws42v8bt12</fromusername><scene>0</scene><appinfo><version>1</version><appname /></appinfo><commenturl />"
 							result, _ := _struct.SendAppMessage(_struct.ReqIdMap[reqId].BotWxId, t.ResponseData[0].UserName, str, 49)
 							_struct.WebSocketConn.WriteMessage(1, result)
 							getChatRoomInfo(_struct.ReqIdMap[reqId].BotWxId, t.ResponseData[0].UserName)
@@ -458,9 +497,17 @@ func CgiResponseProcess(info []byte) {
 			}
 		}
 	}
+
 	reqStruct := _struct.ReqIdMap[reqId]            // 获取结构体副本
 	reqStruct.Status = response.CgiBaseResponse.Ret // 修改副本
-	_struct.ReqIdMap[reqId] = reqStruct             // 重新赋值回 map
+	// 用户检测
+	var t _struct.SearchChatroomInfo
+	json.Unmarshal(info, &t)
+	if len(t.ResponseData) > 0 {
+		userInfo, _ := json.Marshal(t.ResponseData)
+		reqStruct.UserInfo = string(userInfo) //
+	}
+	_struct.ReqIdMap[reqId] = reqStruct // 重新赋值回 map
 }
 
 // 加入群聊

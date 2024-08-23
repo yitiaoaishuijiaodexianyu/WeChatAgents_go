@@ -3,6 +3,7 @@ package wxRobot
 import (
 	"WeChatAgents_go/common"
 	_struct "WeChatAgents_go/struct"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"time"
 )
@@ -55,7 +56,34 @@ func GetChatroomUserList(c *gin.Context) {
 
 // GetUserInfo 获取用户详细信息
 func GetUserInfo(c *gin.Context) {
-
+	type Data struct {
+		WxId    string `json:"wx_id"`
+		BotWxId string `json:"bot_wx_id"`
+	}
+	var data Data
+	if ok := c.ShouldBindJSON(&data); ok != nil {
+		c.JSON(200, common.ResultCommon(400, "", "参数解析失败"))
+		return
+	}
+	getWxIdInfo, reqId := _struct.GetWxIdInfo(data.BotWxId, data.WxId)
+	_struct.WebSocketConn.WriteMessage(1, getWxIdInfo)
+	var wxUserInfo []_struct.WxUserInfo
+	for true {
+		if _struct.ReqIdMap[reqId].UserInfo != "" {
+			json.Unmarshal([]byte(_struct.ReqIdMap[reqId].UserInfo), &wxUserInfo)
+		}
+		if _struct.ReqIdMap[reqId].Status == 0 {
+			delete(_struct.ReqIdMap, reqId)
+			c.JSON(200, common.ResultCommon(0, wxUserInfo[0], "获取用户信息成功"))
+			return
+		}
+		if _struct.ReqIdMap[reqId].Status == -2 {
+			delete(_struct.ReqIdMap, reqId)
+			c.JSON(200, common.ResultCommon(0, "", "获取用户信息失败"))
+			return
+		}
+		time.Sleep(time.Second * 1)
+	}
 }
 
 // SendText 发送文本信息
